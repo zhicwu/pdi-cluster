@@ -118,6 +118,7 @@ public class QuartzScheduler implements IScheduler {
        * us in that regard.
        */
             quartzScheduler = quartzSchedulerFactory.getScheduler();
+            QuartzSchedulerHelper.init(quartzScheduler);
         }
 
         logger.debug("Using quartz scheduler " + quartzScheduler); //$NON-NLS-1$
@@ -275,6 +276,9 @@ public class QuartzScheduler implements IScheduler {
 
         try {
             Scheduler scheduler = getQuartzScheduler();
+
+            QuartzSchedulerHelper.applyJobExecutionRules(scheduler, jobDetail);
+
             if (triggerCalendar != null) {
                 scheduler.addCalendar(jobId.toString(), triggerCalendar, false, false);
                 quartzTrigger.setCalendarName(jobId.toString());
@@ -339,6 +343,7 @@ public class QuartzScheduler implements IScheduler {
             }
 
             JobDetail jobDetail = createJobDetails(jobKey, jobParams);
+            QuartzSchedulerHelper.applyJobExecutionRules(scheduler, jobDetail);
             scheduler.addJob(jobDetail, true);
             if (triggerCalendar != null) {
                 scheduler.addCalendar(jobId.toString(), triggerCalendar, true, true);

@@ -44,9 +44,7 @@ import org.pentaho.platform.util.beans.ActionHarness;
 import org.pentaho.platform.util.messages.LocaleHelper;
 import org.pentaho.platform.util.web.MimeHelper;
 import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+import org.quartz.*;
 
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -69,7 +67,8 @@ public class ActionAdapterQuartzJob implements Job {
     private static final long RETRY_SLEEP_AMOUNT = 10000;
 
     private String outputFilePath = null;
-    private Object lock = new Object();
+    // Without "final" here it's kind of scary...
+    private final Object lock = new Object();
 
     protected Class<?> resolveClass(JobDataMap jobDataMap) throws PluginBeanException, JobExecutionException {
         String actionClass = jobDataMap.getString(QuartzScheduler.RESERVEDMAPKEY_ACTIONCLASS);
@@ -112,6 +111,17 @@ public class ActionAdapterQuartzJob implements Job {
 
     @SuppressWarnings("unchecked")
     public void execute(JobExecutionContext context) throws JobExecutionException {
+        Scheduler scheduler = null;
+        try {
+            IScheduler pentahoScheduler = PentahoSystem.getObjectFactory().get(IScheduler.class, "IScheduler2", null);
+            scheduler = pentahoScheduler instanceof QuartzScheduler
+                    ? ((QuartzScheduler) pentahoScheduler).getQuartzScheduler() : null;
+        } catch (Exception e) {
+            // ignore
+        }
+
+        QuartzSchedulerHelper.applyJobExecutionRules(scheduler, context == null ? null : context.getJobDetail());
+
         JobDataMap jobDataMap = context.getMergedJobDataMap();
         String actionUser = jobDataMap.getString(QuartzScheduler.RESERVEDMAPKEY_ACTIONUSER);
 
