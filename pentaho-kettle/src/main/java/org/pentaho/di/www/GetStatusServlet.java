@@ -39,6 +39,8 @@ import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.net.URLEncoder;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 public class GetStatusServlet extends BaseHttpServlet implements CartePluginInterface {
@@ -47,6 +49,9 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
     private static final long serialVersionUID = 3634806745372015720L;
 
     public static final String CONTEXT_PATH = "/kettle/status";
+
+    // this is helpful when you implemented a job or transformation as wrapper for others
+    public static final String JOB_NAME_PARAM = System.getProperty("KETTLE_JOB_NAME_PARAM", "ETL_SCRIPT");
 
     public GetStatusServlet() {
     }
@@ -244,6 +249,47 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
             out.println("<BODY>");
             out.println("<H1>" + BaseMessages.getString(PKG, "GetStatusServlet.TopStatus") + "</H1>");
 
+            // It happens even with JDK 8. It's either something similar to the bug below
+            // http://bugs.java.com/bugdatabase/view_bug.do?bug_id=7075600
+            // or caused by java.util.Date comparison.
+            // Instead of set java.util.Arrays.useLegacyMergeSort system property to true,
+            // let's simple ignore what happened...
+            try {
+                Collections.sort(transEntries, new Comparator<CarteObjectEntry>() {
+                    @Override
+                    public int compare(CarteObjectEntry o1, CarteObjectEntry o2) {
+                        Trans t1 = getTransformationMap().getTransformation(o1);
+                        Trans t2 = getTransformationMap().getTransformation(o2);
+
+                        Date d1 = t1 == null ? null : t1.getLogDate();
+                        Date d2 = t2 == null ? null : t2.getLogDate();
+                        int cmpName = d1 == null || d2 == null
+                                ? o1.getName().compareTo(o2.getName()) : d2.compareTo(d1);
+                        return cmpName != 0 ? cmpName : o1.getId().compareTo(o2.getId());
+                    }
+                });
+            } catch (Exception e) {
+                // fine, let's use the original list then
+            }
+
+            try {
+                Collections.sort(jobEntries, new Comparator<CarteObjectEntry>() {
+                    @Override
+                    public int compare(CarteObjectEntry o1, CarteObjectEntry o2) {
+                        Job j1 = getJobMap().getJob(o1);
+                        Job j2 = getJobMap().getJob(o2);
+
+                        Date d1 = j1 == null ? null : j1.getLogDate();
+                        Date d2 = j2 == null ? null : j2.getLogDate();
+                        int cmpName = d1 == null || d2 == null
+                                ? o1.getName().compareTo(o2.getName()) : d2.compareTo(d1);
+                        return cmpName != 0 ? cmpName : o1.getId().compareTo(o2.getId());
+                    }
+                });
+            } catch (Exception e) {
+                // fine, let's use the original list then
+            }
+
             try {
                 out.println("<table border=\"1\">");
                 out.print("<tr> <th>"
@@ -252,8 +298,6 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                         + BaseMessages.getString(PKG, "GetStatusServlet.Status") + "</th> <th>"
                         + BaseMessages.getString(PKG, "GetStatusServlet.LastLogDate") + "</th> <th>"
                         + BaseMessages.getString(PKG, "GetStatusServlet.Remove") + "</th> </tr>");
-
-                Collections.sort(transEntries);
 
                 for (CarteObjectEntry entry : transEntries) {
                     String name = entry.getName();
@@ -291,12 +335,13 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                         + BaseMessages.getString(PKG, "GetStatusServlet.LastLogDate") + "</th> <th>"
                         + BaseMessages.getString(PKG, "GetStatusServlet.Remove") + "</th> </tr>");
 
-                Collections.sort(jobEntries);
-
                 for (CarteObjectEntry entry : jobEntries) {
                     String name = entry.getName();
                     String id = entry.getId();
                     Job job = getJobMap().getJob(entry);
+                    String realName = job.getParameterValue(JOB_NAME_PARAM);
+                    realName = realName == null
+                            ? name : new StringBuilder(name).append('(').append(realName.trim()).append(')').toString();
                     String status = job.getStatus();
 
                     String removeText;
@@ -312,7 +357,7 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                     out.print("<tr>");
                     out.print("<td><a href=\""
                             + convertContextPath(GetJobStatusServlet.CONTEXT_PATH) + "?name="
-                            + URLEncoder.encode(name, "UTF-8") + "&id=" + id + "\">" + name + "</a></td>");
+                            + URLEncoder.encode(name, "UTF-8") + "&id=" + id + "\">" + realName + "</a></td>");
                     out.print("<td>" + id + "</td>");
                     out.print("<td>" + status + "</td>");
                     out.print("<td>"
