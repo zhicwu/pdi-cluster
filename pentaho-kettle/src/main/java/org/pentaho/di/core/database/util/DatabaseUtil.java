@@ -67,6 +67,11 @@ public class DatabaseUtil implements DataSourceProviderInterface {
         if (Const.isEmpty(dsName)) {
             throw new NamingException(BaseMessages.getString(PKG, "DatabaseUtil.DSNotFound", String.valueOf(dsName)));
         }
+
+        // Too bad there's no context for us to figure out which master initiated the data source lookup
+        // FIXME FoundDS is polluted here...
+        DataSourceLocator.importDataSourcesFromMaster(FoundDS, ctx, dsName);
+
         Object foundDs = FoundDS.get(dsName);
         if (foundDs != null) {
             return (DataSource) foundDs;
