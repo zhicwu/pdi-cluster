@@ -45,6 +45,7 @@ import org.pentaho.di.trans.step.errorhandling.Stream;
 import org.pentaho.di.trans.step.errorhandling.StreamIcon;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface.StreamType;
+import org.pentaho.di.trans.steps.StreamingSteps;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
@@ -65,6 +66,8 @@ public class FilterRowsMeta extends BaseStepMeta implements StepMetaInterface {
      * @since version 2.1
      */
     private Condition condition;
+
+    private StreamingSteps outputSteps;
 
     public FilterRowsMeta() {
         super(); // allocate BaseStepMeta
@@ -109,8 +112,10 @@ public class FilterRowsMeta extends BaseStepMeta implements StepMetaInterface {
         StringBuffer retval = new StringBuffer(200);
 
         List<StreamInterface> targetStreams = getStepIOMeta().getTargetStreams();
-        retval.append(XMLHandler.addTagValue("send_true_to", targetStreams.get(0).getStepname()));
-        retval.append(XMLHandler.addTagValue("send_false_to", targetStreams.get(1).getStepname()));
+        retval.append(XMLHandler.addTagValue("send_true_to",
+                outputSteps == null ? targetStreams.get(0).getStepname() : outputSteps.getStepName()));
+        retval.append(XMLHandler.addTagValue("send_false_to",
+                outputSteps == null ? targetStreams.get(1).getStepname() : outputSteps.getStepName(1)));
         retval.append("    <compare>").append(Const.CR);
 
         if (condition != null) {
@@ -125,9 +130,9 @@ public class FilterRowsMeta extends BaseStepMeta implements StepMetaInterface {
     private void readData(Node stepnode) throws KettleXMLException {
         try {
             List<StreamInterface> targetStreams = getStepIOMeta().getTargetStreams();
-
             targetStreams.get(0).setSubject(XMLHandler.getTagValue(stepnode, "send_true_to"));
             targetStreams.get(1).setSubject(XMLHandler.getTagValue(stepnode, "send_false_to"));
+            outputSteps = new StreamingSteps(this, StreamType.OUTPUT);
 
             Node compare = XMLHandler.getSubNode(stepnode, "compare");
             Node condnode = XMLHandler.getSubNode(compare, "condition");
@@ -196,6 +201,8 @@ public class FilterRowsMeta extends BaseStepMeta implements StepMetaInterface {
             targetStreams.get(0).setSubject(rep.getStepAttributeString(id_step, "send_true_to"));
             targetStreams.get(1).setSubject(rep.getStepAttributeString(id_step, "send_false_to"));
 
+            outputSteps = new StreamingSteps(this, StreamType.OUTPUT);
+
             condition = rep.loadConditionFromStepAttribute(id_step, "id_condition");
 
         } catch (Exception e) {
@@ -217,8 +224,10 @@ public class FilterRowsMeta extends BaseStepMeta implements StepMetaInterface {
                 List<StreamInterface> targetStreams = getStepIOMeta().getTargetStreams();
 
                 rep.saveConditionStepAttribute(id_transformation, id_step, "id_condition", condition);
-                rep.saveStepAttribute(id_transformation, id_step, "send_true_to", targetStreams.get(0).getStepname());
-                rep.saveStepAttribute(id_transformation, id_step, "send_false_to", targetStreams.get(1).getStepname());
+                rep.saveStepAttribute(id_transformation, id_step, "send_true_to",
+                        outputSteps == null ? targetStreams.get(0).getStepname() : outputSteps.getStepName());
+                rep.saveStepAttribute(id_transformation, id_step, "send_false_to",
+                        outputSteps == null ? targetStreams.get(1).getStepname() : outputSteps.getStepName(1));
             }
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(

@@ -47,6 +47,7 @@ import org.pentaho.di.trans.step.errorhandling.Stream;
 import org.pentaho.di.trans.step.errorhandling.StreamIcon;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface.StreamType;
+import org.pentaho.di.trans.steps.StreamingSteps;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
@@ -71,6 +72,8 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
     private boolean variableReplacementActive;
 
     private boolean lazyConversionActive;
+
+    private StreamingSteps inputSteps;
 
     public TableInputMeta() {
         super();
@@ -150,6 +153,7 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
             String lookupFromStepname = XMLHandler.getTagValue(stepnode, "lookup");
             StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
             infoStream.setSubject(lookupFromStepname);
+            inputSteps = new StreamingSteps(this);
 
             executeEachInputRow = "Y".equals(XMLHandler.getTagValue(stepnode, "execute_each_row"));
             variableReplacementActive = "Y".equals(XMLHandler.getTagValue(stepnode, "variables_active"));
@@ -260,7 +264,8 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
         retval.append("    " + XMLHandler.addTagValue("sql", sql));
         retval.append("    " + XMLHandler.addTagValue("limit", rowLimit));
         StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
-        retval.append("    " + XMLHandler.addTagValue("lookup", infoStream.getStepname()));
+        retval.append("    " + XMLHandler.addTagValue("lookup",
+                inputSteps == null ? infoStream.getStepname() : inputSteps.getStepName()));
         retval.append("    " + XMLHandler.addTagValue("execute_each_row", executeEachInputRow));
         retval.append("    " + XMLHandler.addTagValue("variables_active", variableReplacementActive));
         retval.append("    " + XMLHandler.addTagValue("lazy_conversion_active", lazyConversionActive));
@@ -281,6 +286,7 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
             String lookupFromStepname = rep.getStepAttributeString(id_step, "lookup");
             StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
             infoStream.setSubject(lookupFromStepname);
+            inputSteps = new StreamingSteps(this);
 
             executeEachInputRow = rep.getStepAttributeBoolean(id_step, "execute_each_row");
             variableReplacementActive = rep.getStepAttributeBoolean(id_step, "variables_active");
@@ -296,7 +302,8 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
             rep.saveStepAttribute(id_transformation, id_step, "sql", sql);
             rep.saveStepAttribute(id_transformation, id_step, "limit", rowLimit);
             StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
-            rep.saveStepAttribute(id_transformation, id_step, "lookup", infoStream.getStepname());
+            rep.saveStepAttribute(id_transformation, id_step, "lookup",
+                    inputSteps == null ? infoStream.getStepname() : inputSteps.getStepName());
             rep.saveStepAttribute(id_transformation, id_step, "execute_each_row", executeEachInputRow);
             rep.saveStepAttribute(id_transformation, id_step, "variables_active", variableReplacementActive);
             rep.saveStepAttribute(id_transformation, id_step, "lazy_conversion_active", lazyConversionActive);

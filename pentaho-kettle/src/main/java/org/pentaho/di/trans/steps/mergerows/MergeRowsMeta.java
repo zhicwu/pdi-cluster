@@ -45,6 +45,7 @@ import org.pentaho.di.trans.step.errorhandling.Stream;
 import org.pentaho.di.trans.step.errorhandling.StreamIcon;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface.StreamType;
+import org.pentaho.di.trans.steps.StreamingSteps;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
@@ -62,6 +63,8 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
 
     private String[] keyFields;
     private String[] valueFields;
+
+    private StreamingSteps inputSteps;
 
     /**
      * @return Returns the keyFields.
@@ -146,8 +149,10 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
         retval.append(XMLHandler.addTagValue("flag_field", flagField));
 
         List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
-        retval.append(XMLHandler.addTagValue("reference", infoStreams.get(0).getStepname()));
-        retval.append(XMLHandler.addTagValue("compare", infoStreams.get(1).getStepname()));
+        retval.append(XMLHandler.addTagValue("reference",
+                inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName()));
+        retval.append(XMLHandler.addTagValue("compare",
+                inputSteps == null ? infoStreams.get(1).getStepname() : inputSteps.getStepName(1)));
         retval.append("    <compare>" + Const.CR);
 
         retval.append("    </compare>" + Const.CR);
@@ -184,6 +189,7 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
 
             compareStream.setSubject(XMLHandler.getTagValue(stepnode, "compare"));
             referenceStream.setSubject(XMLHandler.getTagValue(stepnode, "reference"));
+            inputSteps = new StreamingSteps(this);
         } catch (Exception e) {
             throw new KettleXMLException(
                     BaseMessages.getString(PKG, "MergeRowsMeta.Exception.UnableToLoadStepInfo"), e);
@@ -217,6 +223,7 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
 
             referenceStream.setSubject(rep.getStepAttributeString(id_step, "reference"));
             compareStream.setSubject(rep.getStepAttributeString(id_step, "compare"));
+            inputSteps = new StreamingSteps(this);
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(
                     PKG, "MergeRowsMeta.Exception.UnexpectedErrorReadingStepInfo"), e);
@@ -246,8 +253,10 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
             StreamInterface referenceStream = infoStreams.get(0);
             StreamInterface compareStream = infoStreams.get(1);
 
-            rep.saveStepAttribute(id_transformation, id_step, "reference", referenceStream.getStepname());
-            rep.saveStepAttribute(id_transformation, id_step, "compare", compareStream.getStepname());
+            rep.saveStepAttribute(id_transformation, id_step, "reference",
+                    inputSteps == null ? referenceStream.getStepname() : inputSteps.getStepName());
+            rep.saveStepAttribute(id_transformation, id_step, "compare",
+                    inputSteps == null ? compareStream.getStepname() : inputSteps.getStepName(1));
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(PKG, "MergeRowsMeta.Exception.UnableToSaveStepInfo")
                     + id_step, e);
@@ -265,7 +274,7 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
     public void getFields(RowMetaInterface r, String name, RowMetaInterface[] info, StepMeta nextStep,
                           VariableSpace space, Repository repository, IMetaStore metaStore) throws KettleStepException {
         // We don't have any input fields here in "r" as they are all info fields.
-        // So we just merge in the info fields.
+        // So we just update in the info fields.
         //
         if (info != null) {
             boolean found = false;

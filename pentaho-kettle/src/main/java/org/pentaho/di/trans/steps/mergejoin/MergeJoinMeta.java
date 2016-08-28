@@ -44,6 +44,7 @@ import org.pentaho.di.trans.step.errorhandling.Stream;
 import org.pentaho.di.trans.step.errorhandling.StreamIcon;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface.StreamType;
+import org.pentaho.di.trans.steps.StreamingSteps;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
@@ -65,6 +66,8 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
 
     private String[] keyFields1;
     private String[] keyFields2;
+
+    private StreamingSteps inputSteps;
 
     /**
      * The supported join types are INNER, LEFT OUTER, RIGHT OUTER and FULL OUTER
@@ -146,8 +149,10 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
         List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
 
         retval.append(XMLHandler.addTagValue("join_type", getJoinType()));
-        retval.append(XMLHandler.addTagValue("step1", infoStreams.get(0).getStepname()));
-        retval.append(XMLHandler.addTagValue("step2", infoStreams.get(1).getStepname()));
+        retval.append(XMLHandler.addTagValue("step1",
+                inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName()));
+        retval.append(XMLHandler.addTagValue("step2",
+                inputSteps == null ? infoStreams.get(1).getStepname() : inputSteps.getStepName(1)));
 
         retval.append("    <keys_1>" + Const.CR);
         for (int i = 0; i < keyFields1.length; i++) {
@@ -188,6 +193,8 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
             List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
             infoStreams.get(0).setSubject(XMLHandler.getTagValue(stepnode, "step1"));
             infoStreams.get(1).setSubject(XMLHandler.getTagValue(stepnode, "step2"));
+            inputSteps = new StreamingSteps(this);
+
             joinType = XMLHandler.getTagValue(stepnode, "join_type");
         } catch (Exception e) {
             throw new KettleXMLException(
@@ -217,6 +224,8 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
             List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
             infoStreams.get(0).setSubject(rep.getStepAttributeString(id_step, "step1"));
             infoStreams.get(1).setSubject(rep.getStepAttributeString(id_step, "step2"));
+            inputSteps = new StreamingSteps(this);
+
             joinType = rep.getStepAttributeString(id_step, "join_type");
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(
@@ -243,8 +252,10 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
 
             List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
 
-            rep.saveStepAttribute(id_transformation, id_step, "step1", infoStreams.get(0).getStepname());
-            rep.saveStepAttribute(id_transformation, id_step, "step2", infoStreams.get(1).getStepname());
+            rep.saveStepAttribute(id_transformation, id_step, "step1",
+                    inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName());
+            rep.saveStepAttribute(id_transformation, id_step, "step2",
+                    inputSteps == null ? infoStreams.get(1).getStepname() : inputSteps.getStepName(1));
             rep.saveStepAttribute(id_transformation, id_step, "join_type", getJoinType());
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(PKG, "MergeJoinMeta.Exception.UnableToSaveStepInfo")

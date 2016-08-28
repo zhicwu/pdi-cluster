@@ -41,6 +41,7 @@ import org.pentaho.di.trans.step.errorhandling.Stream;
 import org.pentaho.di.trans.step.errorhandling.StreamIcon;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface;
 import org.pentaho.di.trans.step.errorhandling.StreamInterface.StreamType;
+import org.pentaho.di.trans.steps.StreamingSteps;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
@@ -58,6 +59,8 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
      * The formula calculations to be performed
      */
     private String condition;
+
+    private StreamingSteps outputSteps;
 
     public JavaFilterMeta() {
         super(); // allocate BaseStepMeta
@@ -80,6 +83,8 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
         targetStreams.get(0).setSubject(XMLHandler.getTagValue(stepnode, "send_true_to"));
         targetStreams.get(1).setSubject(XMLHandler.getTagValue(stepnode, "send_false_to"));
 
+        outputSteps = new StreamingSteps(this, StreamType.OUTPUT);
+
         condition = XMLHandler.getTagValue(stepnode, "condition");
     }
 
@@ -87,8 +92,10 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
         StringBuffer retval = new StringBuffer();
 
         List<StreamInterface> targetStreams = getStepIOMeta().getTargetStreams();
-        retval.append(XMLHandler.addTagValue("send_true_to", targetStreams.get(0).getStepname()));
-        retval.append(XMLHandler.addTagValue("send_false_to", targetStreams.get(1).getStepname()));
+        retval.append(XMLHandler.addTagValue("send_true_to",
+                outputSteps == null ? targetStreams.get(0).getStepname() : outputSteps.getStepName()));
+        retval.append(XMLHandler.addTagValue("send_false_to",
+                outputSteps == null ? targetStreams.get(1).getStepname() : outputSteps.getStepName(1)));
 
         retval.append(XMLHandler.addTagValue("condition", condition));
 
@@ -119,6 +126,8 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
         targetStreams.get(0).setSubject(rep.getStepAttributeString(id_step, "send_true_to"));
         targetStreams.get(1).setSubject(rep.getStepAttributeString(id_step, "send_false_to"));
 
+        outputSteps = new StreamingSteps(this, StreamType.OUTPUT);
+
         condition = rep.getStepAttributeString(id_step, "condition");
     }
 
@@ -132,8 +141,10 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
     public void saveRep(Repository rep, IMetaStore metaStore, ObjectId id_transformation, ObjectId id_step) throws KettleException {
         List<StreamInterface> targetStreams = getStepIOMeta().getTargetStreams();
 
-        rep.saveStepAttribute(id_transformation, id_step, "send_true_to", targetStreams.get(0).getStepname());
-        rep.saveStepAttribute(id_transformation, id_step, "send_false_to", targetStreams.get(1).getStepname());
+        rep.saveStepAttribute(id_transformation, id_step, "send_true_to",
+                outputSteps == null ? targetStreams.get(0).getStepname() : outputSteps.getStepName());
+        rep.saveStepAttribute(id_transformation, id_step, "send_false_to",
+                outputSteps == null ? targetStreams.get(1).getStepname() : outputSteps.getStepName(1));
 
         rep.saveStepAttribute(id_transformation, id_step, "condition", condition);
     }
