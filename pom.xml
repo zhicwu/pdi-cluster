@@ -1,0 +1,74 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.github.zhicwu</groupId>
+    <artifactId>pdi-cluster</artifactId>
+    <version>6.1.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>PDI Cluster</name>
+    <description>Instructions and workarounds for building a cluster using Pentaho BA server and Kettle.</description>
+    <url>https://github.com/zhicwu/pdi-cluster</url>
+    <inceptionYear>2016</inceptionYear>
+
+    <modules>
+        <module>pentaho-kettle</module>
+        <module>pentaho-platform</module>
+    </modules>
+
+    <properties>
+        <pentaho-ce.version>6.1.0.1-196</pentaho-ce.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <main.basedir>${project.basedir}</main.basedir>
+        <compiler-plugin.version>3.5.1</compiler-plugin.version>
+        <java.version>1.8</java.version>
+    </properties>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>pentaho-repo</id>
+            <url>http://repo.pentaho.org/artifactory/repo/</url>
+        </repository>
+    </repositories>
+
+    <licenses>
+        <license>
+            <name>Apache 2</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>Apache License Version 2.0</comments>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:zhicwu/pdi-cluster.git</connection>
+        <developerConnection>scm:git:git@github.com:zhicwu/pdi-cluster.git</developerConnection>
+        <url>https://github.com/zhicwu/pdi-cluster</url>
+        <tag>${project.version}</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>Zhichun Wu</name>
+        </developer>
+    </developers>
+</project>

@@ -1,0 +1,75 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.github.zhicwu</groupId>
+        <artifactId>pdi-cluster</artifactId>
+        <version>6.1.0.1-SNAPSHOT</version>
+    </parent>
+    <artifactId>pentaho-kettle</artifactId>
+    <packaging>jar</packaging>
+    <name>Pentaho Kettle CE</name>
+    <description>Workarounds for Pentaho Kettle Community Edition.</description>
+    <url>https://github.com/zhicwu/pdi-cluster</url>
+
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+        <servlet.version>3.1.0</servlet.version>
+        <jersey.version>1.16</jersey.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-platform-api</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-platform-extensions</artifactId>
+            <version>${pentaho-ce.version}</version>
+            <exclusions>
+                <!-- xbean 2.5 is probably too old as it's not available on either Pentaho or Central maven repos -->
+                <exclusion>
+                    <groupId>org.apache.xbean</groupId>
+                    <artifactId>xbean</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-core</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-engine</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>pdi-pur-plugin</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+    </dependencies>
+    <licenses>
+        <license>
+            <name>Apache 2</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>Apache License Version 2.0</comments>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:zhicwu/pdi-cluster.git</connection>
+        <developerConnection>scm:git:git@github.com:zhicwu/pdi-cluster.git</developerConnection>
+        <url>https://github.com/zhicwu/pdi-cluster</url>
+        <tag>${project.version}</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>Zhichun Wu</name>
+        </developer>
+    </developers>
+</project>
