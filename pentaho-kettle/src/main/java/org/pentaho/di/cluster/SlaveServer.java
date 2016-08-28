@@ -78,6 +78,8 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
 
     public static final int KETTLE_CARTE_RETRY_BACKOFF_INCREMENTS = getBackoffIncrements();
 
+    public static final boolean KETTLE_FORCED_SSL = getForcedSsl();
+
     private static int getNumberOfSlaveServerRetries() {
         try {
             return Integer.parseInt(Const.NVL(System.getProperty("KETTLE_CARTE_RETRIES"), "0"));
@@ -91,6 +93,18 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
             return Integer.parseInt(Const.NVL(System.getProperty("KETTLE_CARTE_RETRY_BACKOFF_INCREMENTS"), "1000"));
         } catch (Exception e) {
             return 1000;
+        }
+    }
+
+    public static boolean getForcedSsl()
+    {
+        try
+        {
+            return "Y".equalsIgnoreCase(System.getProperty("KETTLE_FORCED_SSL"));
+        }
+        catch(Exception e)
+        {
+            return false;
         }
     }
 
@@ -1104,7 +1118,7 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
      * @return the sslMode
      */
     public boolean isSslMode() {
-        return sslMode;
+        return KETTLE_FORCED_SSL || sslMode;
     }
 
     /**
