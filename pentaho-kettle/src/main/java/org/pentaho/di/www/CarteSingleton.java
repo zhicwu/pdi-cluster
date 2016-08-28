@@ -82,28 +82,31 @@ public class CarteSingleton {
             // Repeating the registration over and over every few minutes might
             // harden this sort of problems.
             //
-            if (config.isReportingToMasters()) {
+
+            /* sorry MasterDetector will take care of the following
+            if ( config.isReportingToMasters() ) {
                 String hostname = slaveServer.getHostname();
                 final SlaveServer client =
-                        new SlaveServer("Dynamic slave [" + hostname + ":" + port + "]", hostname, "" + port, slaveServer
-                                .getUsername(), slaveServer.getPassword());
-                for (final SlaveServer master : config.getMasters()) {
+                        new SlaveServer( "Dynamic slave [" + hostname + ":" + port + "]", hostname, "" + port, slaveServer
+                                .getUsername(), slaveServer.getPassword() );
+                for ( final SlaveServer master : config.getMasters() ) {
                     // Here we use the username/password specified in the slave
                     // server section of the configuration.
                     // This doesn't have to be the same pair as the one used on the
                     // master!
                     //
                     try {
-                        SlaveServerDetection slaveServerDetection = new SlaveServerDetection(client);
-                        master.sendXML(slaveServerDetection.getXML(), RegisterSlaveServlet.CONTEXT_PATH + "/");
-                        log.logBasic("Registered this slave server to master slave server ["
-                                + master.toString() + "] on address [" + master.getServerAndPort() + "]");
-                    } catch (Exception e) {
-                        log.logError("Unable to register to master slave server ["
-                                + master.toString() + "] on address [" + master.getServerAndPort() + "]");
+                        SlaveServerDetection slaveServerDetection = new SlaveServerDetection( client );
+                        master.sendXML( slaveServerDetection.getXML(), RegisterSlaveServlet.CONTEXT_PATH + "/" );
+                        log.logBasic( "Registered this slave server to master slave server ["
+                                + master.toString() + "] on address [" + master.getServerAndPort() + "]" );
+                    } catch ( Exception e ) {
+                        log.logError( "Unable to register to master slave server ["
+                                + master.toString() + "] on address [" + master.getServerAndPort() + "]" );
                     }
                 }
             }
+            */
         }
     }
 

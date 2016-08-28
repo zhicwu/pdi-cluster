@@ -29,16 +29,15 @@ import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 import com.sun.jersey.api.json.JSONConfiguration;
 import org.apache.commons.cli.*;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.KettleClientEnvironment;
 import org.pentaho.di.core.KettleEnvironment;
+import org.pentaho.di.core.database.util.DataSourceLocator;
 import org.pentaho.di.core.logging.KettleLogStore;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.logging.LogChannelInterface;
-import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
@@ -50,9 +49,13 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Carte {
+    private final static ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
     private static Class<?> PKG = Carte.class; // for i18n purposes, needed by Translator2!!
 
     private WebServer webServer;
@@ -67,9 +70,10 @@ public class Carte {
     public Carte(final SlaveServerConfig config, Boolean joinOverride) throws Exception {
         this.config = config;
 
-        allOK = true;
+        // allOK = true;
 
         CarteSingleton.setSlaveServerConfig(config);
+
         LogChannelInterface log = CarteSingleton.getInstance().getLog();
 
         final TransformationMap transformationMap = CarteSingleton.getInstance().getTransformationMap();
@@ -89,7 +93,7 @@ public class Carte {
             } catch (Exception e) {
                 log.logError(BaseMessages.getString(PKG, "Carte.Error.CanNotPartPort", slaveServer.getHostname(), "" + port),
                         e);
-                allOK = false;
+                // allOK = false;
             }
         }
 
@@ -97,58 +101,23 @@ public class Carte {
         // The master might be dead or not alive yet at the time we send this message.
         // Repeating the registration over and over every few minutes might harden this sort of problems.
         //
-        Properties masterProperties = null;
-        if (config.isReportingToMasters()) {
-            String propertiesMaster = slaveServer.getPropertiesMasterName();
-            for (final SlaveServer master : config.getMasters()) {
-                // Here we use the username/password specified in the slave server section of the configuration.
-                // This doesn't have to be the same pair as the one used on the master!
-                //
-                try {
-                    SlaveServerDetection slaveServerDetection = new SlaveServerDetection(slaveServer.getClient());
-                    master.sendXML(slaveServerDetection.getXML(), RegisterSlaveServlet.CONTEXT_PATH + "/");
-                    log.logBasic("Registered this slave server to master slave server [" + master.toString() + "] on address ["
-                            + master.getServerAndPort() + "]");
-                } catch (Exception e) {
-                    log.logError("Unable to register to master slave server [" + master.toString() + "] on address [" + master
-                            .getServerAndPort() + "]");
-                    allOK = false;
-                }
-                try {
-                    if (!StringUtils.isBlank(propertiesMaster) && propertiesMaster.equalsIgnoreCase(master.getName())) {
-                        if (masterProperties != null) {
-                            log.logError("More than one primary master server. Master name is " + propertiesMaster);
-                        } else {
-                            masterProperties = master.getKettleProperties();
-                            log.logBasic("Got properties from master server [" + master.toString() + "], address [" + master
-                                    .getServerAndPort() + "]");
-                        }
-                    }
-                } catch (Exception e) {
-                    log.logError("Unable to get properties from master server [" + master.toString() + "], address [" + master
-                            .getServerAndPort() + "]");
-                    allOK = false;
-                }
-            }
-        }
-        if (masterProperties != null) {
-            EnvUtil.applyKettleProperties(masterProperties, slaveServer.isOverrideExistingProperties());
-        }
+        // allOK = detector.registerOnMasters();
+        // No longer need the following line as we did in Carte constructor
 
         // If we need to time out finished or idle objects, we should create a timer in the background to clean
         // this is done automatically now
         // CarteSingleton.installPurgeTimer(config, log, transformationMap, jobMap);
 
-        if (allOK) {
-            boolean shouldJoin = config.isJoining();
-            if (joinOverride != null) {
-                shouldJoin = joinOverride;
-            }
-
-            this.webServer =
-                    new WebServer(log, transformationMap, jobMap, socketRepository, detections, hostname, port, shouldJoin,
-                            config.getPasswordFile(), slaveServer.getSslConfig());
+        // if (allOK) {
+        boolean shouldJoin = config.isJoining();
+        if (joinOverride != null) {
+            shouldJoin = joinOverride;
         }
+
+        this.webServer =
+                new WebServer(log, transformationMap, jobMap, socketRepository, detections, hostname, port, shouldJoin,
+                        config.getPasswordFile(), slaveServer.getSslConfig());
+        // }
     }
 
     public static void main(String[] args) {
@@ -156,6 +125,7 @@ public class Carte {
             parseAndRunCommand(args);
         } catch (Exception e) {
             e.printStackTrace();
+            scheduler.shutdown();
         }
     }
 
@@ -231,6 +201,10 @@ public class Carte {
     private static void setKettleEnvironment() throws Exception {
         KettleClientEnvironment.getInstance().setClient(KettleClientEnvironment.ClientType.CARTE);
         KettleEnvironment.init();
+
+        // http://forums.pentaho.com/showthread.php?156592-Kettle-5-0-1-Log4j-plugin-usage
+        // LoggingBuffer loggingBuffer = KettleLogStore.getAppender();
+        // loggingBuffer.addLoggingEventListener(new Log4jLogging());
     }
 
     public static void runCarte(SlaveServerConfig config) throws Exception {
@@ -238,8 +212,17 @@ public class Carte {
 
         config.setJoining(true);
 
+        MasterDetector detector = MasterDetector.instance;
+        DataSourceLocator.activate();
+
         Carte carte = new Carte(config, false);
         CarteSingleton.setCarte(carte);
+
+        // register first
+        detector.registerOnMasters();
+        // and then enter the loop to check and re-register as required
+        scheduler.scheduleWithFixedDelay(detector, detector.getInitialDelay(),
+                detector.getRefreshInterval(), TimeUnit.MILLISECONDS);
 
         carte.getWebServer().join();
     }
@@ -310,7 +293,9 @@ public class Carte {
 
     private static void shutdown(String hostname, String port, String username, String password) {
         try {
+            DataSourceLocator.deactivate();
             callStopCarteRestService(hostname, port, username, password);
+            scheduler.shutdown();
         } catch (Exception e) {
             e.printStackTrace();
         }
