@@ -1,0 +1,63 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.github.zhicwu</groupId>
+        <artifactId>pdi-cluster</artifactId>
+        <version>6.1.0.1-SNAPSHOT</version>
+    </parent>
+    <artifactId>pentaho-platform</artifactId>
+    <packaging>jar</packaging>
+    <name>Pentaho BA Server CE</name>
+    <description>Workarounds for Pentaho BA Server Community Edition.</description>
+    <url>https://github.com/zhicwu/pdi-cluster</url>
+
+    <properties>
+        <main.basedir>${project.parent.basedir}</main.basedir>
+        <quartz.version>1.7.2</quartz.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-platform-api</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-platform-repository</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pentaho-platform-scheduler</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+            <version>${quartz.version}</version>
+        </dependency>
+    </dependencies>
+    <licenses>
+        <license>
+            <name>Apache 2</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>Apache License Version 2.0</comments>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:zhicwu/pdi-cluster.git</connection>
+        <developerConnection>scm:git:git@github.com:zhicwu/pdi-cluster.git</developerConnection>
+        <url>https://github.com/zhicwu/pdi-cluster</url>
+        <tag>${project.version}</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <name>Zhichun Wu</name>
+        </developer>
+    </developers>
+</project>
