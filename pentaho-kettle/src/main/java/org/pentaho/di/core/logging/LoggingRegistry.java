@@ -29,14 +29,16 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LoggingRegistry {
-    private static LoggingRegistry registry = new LoggingRegistry();
-    private Map<String, LoggingObjectInterface> map;
-    private Map<String, List<String>> childrenMap;
-    private Date lastModificationTime;
-    private int maxSize;
-    private final int DEFAULT_MAX_SIZE = 10000;
+    // OK, why not declare the followings as final?
+    private static final LoggingRegistry registry = new LoggingRegistry();
+    private static final int DEFAULT_MAX_SIZE = 10000;
 
-    private Object syncObject = new Object();
+    private final Map<String, LoggingObjectInterface> map;
+    private final Map<String, List<String>> childrenMap;
+    private final int maxSize;
+    private final Object syncObject = new Object();
+
+    private Date lastModificationTime;
 
     private LoggingRegistry() {
         this.map = new ConcurrentHashMap<String, LoggingObjectInterface>();
@@ -52,8 +54,16 @@ public class LoggingRegistry {
 
     public String registerLoggingSource(Object object) {
         synchronized (this.syncObject) {
+            // it does not make sense to me to check the setting every time registering a logging service,
+            // not to mention I once had the weird thread dump below(all threads were locked up):
+            // Thread 28307: (state = BLOCKED)
+            // - java.lang.Integer.parseInt(java.lang.String, int) @bci=4, line=542 (Compiled frame)
+            // - java.lang.Integer.parseInt(java.lang.String) @bci=3, line=615 (Compiled frame)
+            // - org.pentaho.di.core.Const.toInt(java.lang.String, int) @bci=1, line=1173 (Compiled frame)
+            // - org.pentaho.di.core.logging.LoggingRegistry.registerLoggingSource(java.lang.Object) @bci=16, line=63 (Compiled frame)
+            // ...
 
-            this.maxSize = Const.toInt(EnvUtil.getSystemProperty("KETTLE_MAX_LOGGING_REGISTRY_SIZE"), 10000);
+            // this.maxSize = Const.toInt( EnvUtil.getSystemProperty( "KETTLE_MAX_LOGGING_REGISTRY_SIZE" ), 10000 );
 
             LoggingObject loggingSource = new LoggingObject(object);
 

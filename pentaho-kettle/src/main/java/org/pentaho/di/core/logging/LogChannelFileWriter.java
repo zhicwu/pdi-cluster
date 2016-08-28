@@ -65,6 +65,16 @@ public class LogChannelFileWriter {
         active = new AtomicBoolean(false);
         lastBufferLineNr = KettleLogStore.getLastBufferLineNr();
 
+        // it's basic move to create the directory *before* creating log file
+        try {
+            FileObject parent = logFile == null ? null : logFile.getParent();
+            if (parent != null && !parent.exists()) {
+                parent.createFolder();
+            }
+        } catch (Exception e) {
+            // ignore this type of exception as eventually KettleVFS will handle this
+        }
+
         try {
             logFileOutputStream = KettleVFS.getOutputStream(logFile, appending);
         } catch (IOException e) {
