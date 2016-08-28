@@ -162,7 +162,8 @@ public class LazyUnifiedRepositoryDirectory extends RepositoryDirectory {
 
                     RepositoryLock lock = null;
                     try {
-                        lock = lockService.getLock(child);
+                        // No idea why introducing the unnecessary dependency and NPE here...
+                        lock = lockService == null ? null : lockService.getLock(child);
                         RepositoryObjectType objectType = getObjectType(child.getName());
                         EERepositoryObject repositoryObject =
                                 new EERepositoryObject(child, this, null, objectType, null, lock, false);
