@@ -44,16 +44,14 @@ import org.pentaho.di.job.DelegationListener;
 import org.pentaho.di.job.Job;
 import org.pentaho.di.job.JobExecutionConfiguration;
 import org.pentaho.di.job.JobMeta;
+import org.pentaho.di.job.entries.RemoteJobEntryLogHelper;
 import org.pentaho.di.job.entry.JobEntryBase;
 import org.pentaho.di.job.entry.JobEntryInterface;
 import org.pentaho.di.job.entry.validator.AndValidator;
 import org.pentaho.di.job.entry.validator.JobEntryValidatorUtils;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceEntry;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.resource.ResourceEntry.ResourceType;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
 import org.pentaho.di.www.SlaveServerJobStatus;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
@@ -934,9 +932,18 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     // Now start the monitoring...
                     //
                     SlaveServerJobStatus jobStatus = null;
+
+                    RemoteJobEntryLogHelper logHelper = new RemoteJobEntryLogHelper(
+                            remoteSlaveServer, carteObjectId, this.log);
+
                     while (!parentJob.isStopped() && waitingToFinish) {
                         try {
-                            jobStatus = remoteSlaveServer.getJobStatus(jobMeta.getName(), carteObjectId, 0);
+                            jobStatus = remoteSlaveServer.getJobStatus(jobMeta.getName(), carteObjectId,
+                                    logHelper.getLastLogEntryNo());
+                            logHelper.log(jobStatus.getLoggingString(),
+                                    jobStatus.getFirstLoggingLineNr(), jobStatus.getLastLoggingLineNr());
+
+
                             if (jobStatus.getResult() != null) {
                                 // The job is finished, get the result...
                                 //
@@ -951,6 +958,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             // come back on-line
                         }
 
+                        // FIXME why the hell JobEntryTrans sleeps two seconds instead of one
                         // sleep for 1 second
                         try {
                             Thread.sleep(1000);
@@ -1091,8 +1099,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
     /**
      * Make sure that we are not loading jobs recursively...
      *
-     * @param parentJobMeta the parent job metadata
-     * @param jobMeta       the job metadata
+     * @param parentJob the parent job
+     * @param jobMeta   the job metadata
      * @throws KettleException in case both jobs are loaded from the same source
      */
     private void verifyRecursiveExecution(Job parentJob, JobMeta jobMeta) throws KettleException {
@@ -1195,7 +1203,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
                             String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            jobMeta = rep.loadJob(tmpFilename, dir, null, null);
+                            // jobMeta = rep.loadJob(tmpFilename, dir, null, null);
+                            jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
@@ -1322,6 +1331,17 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
         //
         copyVariablesFrom(space); // To make sure variables are available.
         JobMeta jobMeta = getJobMeta(repository, metaStore, space);
+
+        if (jobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {
+            ResourceDefinitionHelper.JobMetaCollection jmc = (ResourceDefinitionHelper.JobMetaCollection) jobMeta;
+            for (JobMeta j : jmc.getAttachedMeta()) {
+                if (!ResourceDefinitionHelper.containsResource(definitions, space, namingInterface, j)) {
+                    j.exportResources(jobMeta, definitions, namingInterface, repository, metaStore);
+                }
+            }
+
+            return null;
+        }
 
         // Also go down into the job and export the files there. (going down
         // recursively)

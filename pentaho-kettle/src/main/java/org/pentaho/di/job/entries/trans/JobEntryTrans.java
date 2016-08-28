@@ -41,16 +41,14 @@ import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.DelegationListener;
 import org.pentaho.di.job.Job;
 import org.pentaho.di.job.JobMeta;
+import org.pentaho.di.job.entries.RemoteJobEntryLogHelper;
 import org.pentaho.di.job.entry.JobEntryBase;
 import org.pentaho.di.job.entry.JobEntryInterface;
 import org.pentaho.di.job.entry.validator.AndValidator;
 import org.pentaho.di.job.entry.validator.JobEntryValidatorUtils;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceEntry;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.resource.ResourceEntry.ResourceType;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransExecutionConfiguration;
 import org.pentaho.di.trans.TransMeta;
@@ -948,6 +946,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                     transExecutionConfiguration.setLogFileName(realLogFilename);
                     transExecutionConfiguration.setSetAppendLogfile(setAppendLogfile);
                     transExecutionConfiguration.setSetLogfile(setLogfile);
+                    // FIXME hard-coded option as there's no way to declare passingExport for Trans Step like Job
+                    transExecutionConfiguration.setPassingExport(true);
 
                     Map<String, String> params = transExecutionConfiguration.getParams();
                     for (String param : transMeta.listParameters()) {
@@ -969,9 +969,14 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                     // Now start the monitoring...
                     //
                     SlaveServerTransStatus transStatus = null;
+                    RemoteJobEntryLogHelper logHelper = new RemoteJobEntryLogHelper(
+                            remoteSlaveServer, carteObjectId, this.log);
                     while (!parentJob.isStopped() && waitingToFinish) {
                         try {
-                            transStatus = remoteSlaveServer.getTransStatus(transMeta.getName(), carteObjectId, 0);
+                            transStatus = remoteSlaveServer.getTransStatus(transMeta.getName(), carteObjectId,
+                                    logHelper.getLastLogEntryNo());
+                            logHelper.log(transStatus.getLoggingString(),
+                                    transStatus.getFirstLoggingLineNr(), transStatus.getLastLoggingLineNr());
                             if (!transStatus.isRunning()) {
                                 // The transformation is finished, get the result...
                                 //
@@ -1187,7 +1192,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
                             String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            transMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
+                            // transMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
+                            transMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_TRANS_DEFAULT_EXT)) {
@@ -1347,7 +1353,7 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
     /**
      * We're going to load the transformation meta data referenced here. Then we're going to give it a new filename,
      * modify that filename in this entries. The parent caller will have made a copy of it, so it should be OK to do so.
-     * <p/>
+     * <p>
      * Exports the object to a flat-file system, adding content with filename keys to a set of definitions. The supplied
      * resource naming interface allows the object to name appropriately without worrying about those parts of the
      * implementation specific details.
@@ -1371,6 +1377,17 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         //
         copyVariablesFrom(space);
         TransMeta transMeta = getTransMeta(repository, space);
+
+        if (transMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
+            ResourceDefinitionHelper.TransMetaCollection tmc = (ResourceDefinitionHelper.TransMetaCollection) transMeta;
+            for (TransMeta t : tmc.getAttachedMeta()) {
+                if (!ResourceDefinitionHelper.containsResource(definitions, space, namingInterface, t)) {
+                    t.exportResources(transMeta, definitions, namingInterface, repository, metaStore);
+                }
+            }
+
+            return null;
+        }
 
         // Also go down into the transformation and export the files there. (mapping recursively down)
         //
