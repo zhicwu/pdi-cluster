@@ -4116,6 +4116,16 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                 vars.put(var, transMeta.getVariable(var));
             }
 
+            Map<String, String> transParams = new HashMap<String, String>();
+            for (String key : transMeta.listParameters()) {
+                String value = transMeta.getParameterValue(key);
+                String defaultValue = transMeta.getParameterDefault(key);
+                transParams.put(key,
+                        executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
+            }
+
+            executionConfiguration.getParams().putAll(transParams);
+
             executionConfiguration.getVariables().putAll(vars);
             slaveServer.injectVariables(executionConfiguration.getVariables());
 

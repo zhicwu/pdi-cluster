@@ -445,10 +445,10 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.changed.ChangedFlag#hasChanged()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.changed.ChangedFlag#hasChanged()
+     */
     @Override
     public boolean hasChanged() {
         if (super.hasChanged()) {
@@ -496,10 +496,10 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.EngineMetaInterface#getFileType()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.EngineMetaInterface#getFileType()
+     */
     public String getFileType() {
         return LastUsedFile.FILE_TYPE_JOB;
     }
@@ -536,10 +536,10 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.xml.XMLInterface#getXML()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.xml.XMLInterface#getXML()
+     */
     public String getXML() {
         Props props = null;
         if (Props.isInitialized()) {
@@ -1154,10 +1154,10 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.EngineMetaInterface#saveSharedObjects()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.EngineMetaInterface#saveSharedObjects()
+     */
     public void saveSharedObjects() throws KettleException {
         try {
             // First load all the shared objects...
@@ -2637,10 +2637,10 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.repository.RepositoryElementInterface#getRepositoryElementType()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.repository.RepositoryElementInterface#getRepositoryElementType()
+     */
     public RepositoryObjectType getRepositoryElementType() {
         return REPOSITORY_ELEMENT_TYPE;
     }
@@ -2663,19 +2663,19 @@ public class JobMeta extends AbstractMeta
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.logging.LoggingObjectInterface#getLogChannelId()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.logging.LoggingObjectInterface#getLogChannelId()
+     */
     public String getLogChannelId() {
         return null;
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.logging.LoggingObjectInterface#getObjectType()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.logging.LoggingObjectInterface#getObjectType()
+     */
     public LoggingObjectType getObjectType() {
         return LoggingObjectType.JOBMETA;
     }

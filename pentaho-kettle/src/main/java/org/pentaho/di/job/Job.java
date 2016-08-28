@@ -1530,28 +1530,28 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#copyVariablesFrom(org.pentaho.di.core.variables.VariableSpace)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#copyVariablesFrom(org.pentaho.di.core.variables.VariableSpace)
+     */
     public void copyVariablesFrom(VariableSpace space) {
         variables.copyVariablesFrom(space);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#environmentSubstitute(java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#environmentSubstitute(java.lang.String)
+     */
     public String environmentSubstitute(String aString) {
         return variables.environmentSubstitute(aString);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#environmentSubstitute(java.lang.String[])
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#environmentSubstitute(java.lang.String[])
+     */
     public String[] environmentSubstitute(String[] aString) {
         return variables.environmentSubstitute(aString);
     }
@@ -1562,47 +1562,47 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#getParentVariableSpace()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#getParentVariableSpace()
+     */
     public VariableSpace getParentVariableSpace() {
         return variables.getParentVariableSpace();
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see
-   * org.pentaho.di.core.variables.VariableSpace#setParentVariableSpace(org.pentaho.di.core.variables.VariableSpace)
-   */
+     * (non-Javadoc)
+     *
+     * @see
+     * org.pentaho.di.core.variables.VariableSpace#setParentVariableSpace(org.pentaho.di.core.variables.VariableSpace)
+     */
     public void setParentVariableSpace(VariableSpace parent) {
         variables.setParentVariableSpace(parent);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#getVariable(java.lang.String, java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#getVariable(java.lang.String, java.lang.String)
+     */
     public String getVariable(String variableName, String defaultValue) {
         return variables.getVariable(variableName, defaultValue);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#getVariable(java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#getVariable(java.lang.String)
+     */
     public String getVariable(String variableName) {
         return variables.getVariable(variableName);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#getBooleanValueOfVariable(java.lang.String, boolean)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#getBooleanValueOfVariable(java.lang.String, boolean)
+     */
     public boolean getBooleanValueOfVariable(String variableName, boolean defaultValue) {
         if (!Const.isEmpty(variableName)) {
             String value = environmentSubstitute(variableName);
@@ -1614,47 +1614,47 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see
-   * org.pentaho.di.core.variables.VariableSpace#initializeVariablesFrom(org.pentaho.di.core.variables.VariableSpace)
-   */
+     * (non-Javadoc)
+     *
+     * @see
+     * org.pentaho.di.core.variables.VariableSpace#initializeVariablesFrom(org.pentaho.di.core.variables.VariableSpace)
+     */
     public void initializeVariablesFrom(VariableSpace parent) {
         variables.initializeVariablesFrom(parent);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#listVariables()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#listVariables()
+     */
     public String[] listVariables() {
         return variables.listVariables();
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#setVariable(java.lang.String, java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#setVariable(java.lang.String, java.lang.String)
+     */
     public void setVariable(String variableName, String variableValue) {
         variables.setVariable(variableName, variableValue);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#shareVariablesWith(org.pentaho.di.core.variables.VariableSpace)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#shareVariablesWith(org.pentaho.di.core.variables.VariableSpace)
+     */
     public void shareVariablesWith(VariableSpace space) {
         variables = space;
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.variables.VariableSpace#injectVariables(java.util.Map)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.variables.VariableSpace#injectVariables(java.util.Map)
+     */
     public void injectVariables(Map<String, String> prop) {
         variables.injectVariables(prop);
     }
@@ -1725,6 +1725,16 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
             for (String var : Const.INTERNAL_JOB_VARIABLES) {
                 executionConfiguration.getVariables().put(var, jobMeta.getVariable(var));
             }
+
+            Map<String, String> jobParams = new HashMap<String, String>();
+            for (String key : jobMeta.listParameters()) {
+                String value = jobMeta.getParameterValue(key);
+                String defaultValue = jobMeta.getParameterDefault(key);
+                jobParams.put(key,
+                        executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
+            }
+
+            executionConfiguration.getParams().putAll(jobParams);
 
             if (executionConfiguration.isPassingExport()) {
                 // First export the job... slaveServer.getVariable("MASTER_HOST")
@@ -1811,7 +1821,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     /**
      * Remove a job entry listener from the job
      *
-     * @param jobListener the job entry listener to remove
+     * @param jobEntryListener the job entry listener to remove
      */
     public void removeJobEntryListener(JobEntryListener jobEntryListener) {
         jobEntryListeners.remove(jobEntryListener);
@@ -1856,83 +1866,83 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#addParameterDefinition(java.lang.String, java.lang.String,
-   * java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#addParameterDefinition(java.lang.String, java.lang.String,
+     * java.lang.String)
+     */
     public void addParameterDefinition(String key, String defValue, String description) throws DuplicateParamException {
         namedParams.addParameterDefinition(key, defValue, description);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#getParameterDescription(java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#getParameterDescription(java.lang.String)
+     */
     public String getParameterDescription(String key) throws UnknownParamException {
         return namedParams.getParameterDescription(key);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#getParameterDefault(java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#getParameterDefault(java.lang.String)
+     */
     public String getParameterDefault(String key) throws UnknownParamException {
         return namedParams.getParameterDefault(key);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#getParameterValue(java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#getParameterValue(java.lang.String)
+     */
     public String getParameterValue(String key) throws UnknownParamException {
         return namedParams.getParameterValue(key);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#listParameters()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#listParameters()
+     */
     public String[] listParameters() {
         return namedParams.listParameters();
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#setParameterValue(java.lang.String, java.lang.String)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#setParameterValue(java.lang.String, java.lang.String)
+     */
     public void setParameterValue(String key, String value) throws UnknownParamException {
         namedParams.setParameterValue(key, value);
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#eraseParameters()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#eraseParameters()
+     */
     public void eraseParameters() {
         namedParams.eraseParameters();
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#clearParameters()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#clearParameters()
+     */
     public void clearParameters() {
         namedParams.clearParameters();
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#activateParameters()
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#activateParameters()
+     */
     public void activateParameters() {
         String[] keys = listParameters();
 
@@ -1959,10 +1969,10 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     }
 
     /*
-   * (non-Javadoc)
-   *
-   * @see org.pentaho.di.core.parameters.NamedParams#copyParametersFrom(org.pentaho.di.core.parameters.NamedParams)
-   */
+     * (non-Javadoc)
+     *
+     * @see org.pentaho.di.core.parameters.NamedParams#copyParametersFrom(org.pentaho.di.core.parameters.NamedParams)
+     */
     public void copyParametersFrom(NamedParams params) {
         namedParams.copyParametersFrom(params);
     }
