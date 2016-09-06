@@ -20,6 +20,7 @@ import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleFileException;
+import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.i18n.BaseMessages;
@@ -38,6 +39,10 @@ import java.util.Map;
  */
 public final class ResourceDefinitionHelper {
     private final static Class<?> PKG = JobMeta.class; // for i18n purposes, needed by Translator2!!
+
+    // FIXME this assumes kettle.properties has been loaded, which might not always true...
+    private static final boolean KEEP_EXPORTED_FILE = "Y".equalsIgnoreCase(
+            EnvUtil.getSystemProperty("KETTLE_KEEP_EXPORTED_FILE", "N"));
 
     private final static String VARIABLE_PREFIX = "${";
     private final static String VARIABLE_SUFFIX = "}";
@@ -63,6 +68,16 @@ public final class ResourceDefinitionHelper {
 
         public List<JobMeta> getAttachedMeta() {
             return attachedMeta;
+        }
+    }
+
+    public static void purge(FileObject tempFile) {
+        if (KEEP_EXPORTED_FILE && tempFile != null) {
+            try {
+                tempFile.delete();
+            } catch (Exception e) {
+                // pretend nothing happened
+            }
         }
     }
 

@@ -58,6 +58,7 @@ import org.pentaho.di.repository.ObjectId;
 import org.pentaho.di.repository.ObjectRevision;
 import org.pentaho.di.repository.Repository;
 import org.pentaho.di.repository.RepositoryDirectoryInterface;
+import org.pentaho.di.resource.ResourceDefinitionHelper;
 import org.pentaho.di.resource.ResourceUtil;
 import org.pentaho.di.resource.TopLevelResource;
 import org.pentaho.di.trans.cluster.TransSplitter;
@@ -4104,6 +4105,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             throw new KettleException("The transformation needs a name to uniquely identify it by on the remote server.");
         }
 
+        FileObject tempFile = null;
         try {
             // Inject certain internal variables to make it more intuitive.
             //
@@ -4135,7 +4137,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
 
                 // First export the job...
                 //
-                FileObject tempFile =
+                tempFile =
                         KettleVFS.createTempFile("transExport", ".zip", System.getProperty("java.io.tmpdir"), transMeta);
 
                 TopLevelResource topLevelResource =
@@ -4195,6 +4197,8 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             throw ke;
         } catch (Exception e) {
             throw new KettleException(e);
+        } finally {
+            ResourceDefinitionHelper.purge(tempFile);
         }
     }
 
