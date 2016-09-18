@@ -80,6 +80,10 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
 
         if (isSame) {
             for (Object key : m1.keySet()) {
+                if (IGNORABLE_KEYS.contains(key)) {
+                    continue;
+                }
+
                 if (!(isSame = Objects.equals(m1.get(key), m2.get(key)))) {
                     break;
                 }
@@ -135,15 +139,14 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
                         jobKey.getUserName().equals(key.getUserName()) &&
                         jobDetail.getGroup().equals(detail.getGroup()) &&
                         compareParameters(map, dataMap.get(RESERVEDMAPKEY_PARAMETERS))) {
-                    String msg = new StringBuilder()
+
+                    throw new JobExecutionException(new StringBuilder()
                             .append("Discard exclusive job [")
                             .append(jobKey)
                             .append("] because [")
                             .append(detail)
                             .append("] is running")
-                            .toString();
-                    logger.error(msg);
-                    throw new JobExecutionException(msg);
+                            .toString());
                 }
             }
         }
