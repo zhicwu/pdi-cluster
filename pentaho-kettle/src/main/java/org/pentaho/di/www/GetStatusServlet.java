@@ -350,7 +350,7 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                         }
                     }
 
-                    String realName = sb.length() == 0 ? name : sb.deleteCharAt(0)
+                    String realName = sb.length() == 0 ? name : sb.deleteCharAt(0).deleteCharAt(0)
                             .insert(0, '(').insert(0, name).append(')').toString();
                     String status = job.getStatus();
 
