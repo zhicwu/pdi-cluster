@@ -1381,7 +1381,7 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         if (transMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
             ResourceDefinitionHelper.TransMetaCollection tmc = (ResourceDefinitionHelper.TransMetaCollection) transMeta;
             for (TransMeta t : tmc.getAttachedMeta()) {
-                if (!ResourceDefinitionHelper.containsResource(definitions, space, namingInterface, t)) {
+                if (!ResourceDefinitionHelper.containsResource(repository, definitions, space, namingInterface, t)) {
                     t.exportResources(transMeta, definitions, namingInterface, repository, metaStore);
                 }
             }

@@ -43,11 +43,8 @@ import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceEntry;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.resource.ResourceEntry.ResourceType;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.trans.TransMeta.TransformationType;
@@ -629,7 +626,8 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
                             String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
+                            // mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
+                            mappingJobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
@@ -785,6 +783,17 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             //
             JobMeta executorJobMeta = loadJobMeta(this, repository, space);
 
+            if (executorJobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {
+                ResourceDefinitionHelper.JobMetaCollection jmc = (ResourceDefinitionHelper.JobMetaCollection) executorJobMeta;
+                for (JobMeta j : jmc.getAttachedMeta()) {
+                    if (!ResourceDefinitionHelper.containsResource(repository, definitions, space, resourceNamingInterface, j)) {
+                        j.exportResources(executorJobMeta, definitions, resourceNamingInterface, repository, metaStore);
+                    }
+                }
+
+                return null;
+            }
+
             // Also go down into the mapping transformation and export the files
             // there. (mapping recursively down)
             //
@@ -814,7 +823,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             return proposedNewFilename;
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(
-                    PKG, "JobExecutorMeta.Exception.UnableToLoadJob", fileName));
+                    PKG, "JobExecutorMeta.Exception.UnableToLoadJob", fileName), e);
         }
     }
 

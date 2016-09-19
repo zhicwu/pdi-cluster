@@ -41,11 +41,8 @@ import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceEntry;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.resource.ResourceEntry.ResourceType;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
 import org.pentaho.di.trans.Trans;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.trans.TransMeta.TransformationType;
@@ -620,7 +617,8 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
                             String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            mappingTransMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
+                            // mappingTransMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
+                            mappingTransMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_TRANS_DEFAULT_EXT)) {
@@ -782,6 +780,17 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
             //
             TransMeta executorTransMeta = loadTransMeta(this, repository, space);
 
+            if (executorTransMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
+                ResourceDefinitionHelper.TransMetaCollection tmc = (ResourceDefinitionHelper.TransMetaCollection) executorTransMeta;
+                for (TransMeta t : tmc.getAttachedMeta()) {
+                    if (!ResourceDefinitionHelper.containsResource(repository, definitions, space, resourceNamingInterface, t)) {
+                        t.exportResources(executorTransMeta, definitions, resourceNamingInterface, repository, metaStore);
+                    }
+                }
+
+                return null;
+            }
+
             // Also go down into the mapping transformation and export the files
             // there. (mapping recursively down)
             //
@@ -811,7 +820,7 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
             return proposedNewFilename;
         } catch (Exception e) {
             throw new KettleException(BaseMessages.getString(PKG, "TransExecutorMeta.Exception.UnableToLoadTrans",
-                    fileName));
+                    fileName), e);
         }
     }
 

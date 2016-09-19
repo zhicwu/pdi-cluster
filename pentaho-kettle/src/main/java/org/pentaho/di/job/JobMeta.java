@@ -2527,6 +2527,9 @@ public class JobMeta extends AbstractMeta
                 // in order to make 'Internal.Entry.Current.Directory' variable work
                 jobMeta.setRepositoryDirectory(directory);
 
+                // avoid endless loop
+                definitions.put(fullname, null);
+
                 // Add used resources, modify transMeta accordingly
                 // Go through the list of steps, etc.
                 // These critters change the steps in the cloned TransMeta

@@ -1335,7 +1335,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
         if (jobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {
             ResourceDefinitionHelper.JobMetaCollection jmc = (ResourceDefinitionHelper.JobMetaCollection) jobMeta;
             for (JobMeta j : jmc.getAttachedMeta()) {
-                if (!ResourceDefinitionHelper.containsResource(definitions, space, namingInterface, j)) {
+                if (!ResourceDefinitionHelper.containsResource(repository, definitions, space, namingInterface, j)) {
                     j.exportResources(jobMeta, definitions, namingInterface, repository, metaStore);
                 }
             }
