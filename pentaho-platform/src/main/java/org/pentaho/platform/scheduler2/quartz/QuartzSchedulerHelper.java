@@ -35,6 +35,11 @@ public final class QuartzSchedulerHelper {
     static final String RESERVEDMAPKEY_EXECPOLICY = "executionPolicy";
 
     static final String EXEC_POLICY_DEFAULT = "Unrestricted";
+    // typical usage of exclusive rule:
+    // 1) Exclusive(respect=Job1,Job2,Job3...)
+    // 2) Exclusive(kill=Job1,Job2,Job3...)
+    // 3) Exclusive(kill=Job1;respect=Job2,Job3...)
+    // 4) Exclusive(Kill=Job1;Kill=Job2;Respect=Job3;Kill=Job4...)
     static final String EXEC_POLICY_EXCLUSIVE = "Exclusive";
 
     static final String KETTLE_JOB_ACTIONID = "kjb.backgroundExecution";
@@ -43,6 +48,11 @@ public final class QuartzSchedulerHelper {
     static final String KEY_ETL_SCRIPT = System.getProperty("KETTLE_JOB_NAME_KEY", "ETL_SCRIPT");
     static final String KEY_ETL_JOB_ID = System.getProperty("KETTLE_JOB_ID_KEY", "ETL_CALLER");
     static final String KEY_ETL_TRACE_ID = System.getProperty("KETTLE_TRACE_ID_KEY", "UNIQUE_ID");
+
+    static final int KETTLE_JOB_KILLER_MAX_WAIT
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_WAIT_SEC", "8000"));
+    static final int KETTLE_JOB_KILLER_CHECK_INTERVAL
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_CHECK_INTERVAL", "2000"));
 
     static final Set<String> IGNORABLE_KEYS = new HashSet<>(Arrays.asList(KEY_ETL_JOB_ID, KEY_ETL_TRACE_ID));
 
@@ -79,7 +89,7 @@ public final class QuartzSchedulerHelper {
             return;
         }
 
-        // attached listeners even the scheduler is shutted down
+        // attached listeners even the scheduler is shutdown
         // scheduler.addTriggerListener(ExclusiveKettleJobRule.instance);
     }
 
