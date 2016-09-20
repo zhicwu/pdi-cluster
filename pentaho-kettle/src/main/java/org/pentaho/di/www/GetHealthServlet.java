@@ -19,6 +19,8 @@ package org.pentaho.di.www;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.xml.XMLHandler;
+import org.pentaho.di.job.Job;
+import org.pentaho.di.trans.Trans;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
@@ -31,6 +33,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 public class GetHealthServlet extends BaseHttpServlet implements CartePluginInterface {
     private static Class<?> PKG = GetHealthServlet.class; // for i18n purposes, needed by Translator2!!
@@ -39,7 +42,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
 
     public static final String CONTEXT_PATH = "/kettle/health";
 
-    static String buildServerHealthXml(String serverName, boolean isMaster) {
+    static String buildServerHealthXml(String serverName, boolean isMaster, JobMap jobMap, TransformationMap transMap) {
         Runtime jvmRuntime = Runtime.getRuntime();
         int jvmCores = jvmRuntime.availableProcessors();
         long jvmTotalMemory = jvmRuntime.totalMemory();
@@ -70,11 +73,13 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
 
         return buildServerStatusXml(serverName, isMaster, sysUptime, jvmCores, sysPhysicalCores, sysLogicalCores,
                 sysCpuLoad, sysLoadAvg, jvmTotalMemory, jvmFreeMemory, sysTotalMemory, sysFreeMemory,
-                sysSwapTotal, sysSwapUsed, totalDiskSpace, usableDiskSpace, sysProcessCount, sysThreadCount);
+                sysSwapTotal, sysSwapUsed, totalDiskSpace, usableDiskSpace, sysProcessCount, sysThreadCount,
+                jobMap, transMap);
     }
 
     static String buildDummyServerStatusXml(String serverName) {
-        return buildServerStatusXml(serverName, false, 0L, 0, 0, 0, 0.0D, 0.0D, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0);
+        return buildServerStatusXml(serverName, false, 0L, 0, 0, 0, 0.0D, 0.0D, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0,
+                null, null);
     }
 
     static String buildServerStatusXml(String serverName, boolean serverType,
@@ -85,7 +90,8 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                                        long sysTotalMemory, long sysFreeMemory,
                                        long sysSwapTotal, long sysSwapUsed,
                                        long totalDiskSpace, long usableDiskSpace,
-                                       int sysProcessCount, int sysThreadCount) {
+                                       int sysProcessCount, int sysThreadCount,
+                                       JobMap jobMap, TransformationMap transMap) {
         StringBuilder xml = new StringBuilder();
 
         xml.append("<server_status>")
@@ -116,7 +122,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
         String serverName = null;
 
         if (server != null) {
-            serverName = new StringBuilder(server.getHostname()).append(':').append(server.getPort()).toString();
+            serverName = server.getServerAndPort();
         }
 
         return serverName;
@@ -151,20 +157,21 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
             out.print(XMLHandler.getXMLHeader(Const.XML_ENCODING));
 
             StringBuilder xml = new StringBuilder();
-            xml.append("<server_status_list>").append(buildServerHealthXml(currentServerName, currentServer.isMaster()));
+            xml.append("<server_status_list>").append(buildServerHealthXml(currentServerName,
+                    currentServer.getHostname() == null || currentServer.isMaster(),
+                    getJobMap(), getTransformationMap()));
 
             // let's show health of the whole cluster regardless how many servers we have
             // FIXME this might be slow but should be fine for a small cluster with 5 - 10 nodes
-            if (currentServer.isMaster()) {
-                for (SlaveServerDetection detectedServer : CarteSingleton.getInstance().getDetections()) {
+            List<SlaveServerDetection> detections = getDetections();
+            if (detections != null) {
+                for (SlaveServerDetection detectedServer : detections) {
                     SlaveServer server = detectedServer.getSlaveServer();
-                    if (!currentServer.getObjectId().equals(server.getObjectId())) {
-                        try {
-                            xml.append(
-                                    server.execService(CONTEXT_PATH + "?partial=Y&source=" + currentServer.getName()));
-                        } catch (Exception e) {
-                            xml.append(buildDummyServerStatusXml(getServerName(server)));
-                        }
+                    try {
+                        xml.append(
+                                server.execService(CONTEXT_PATH + "?partial=Y&source=" + currentServer.getName()));
+                    } catch (Exception e) {
+                        xml.append(buildDummyServerStatusXml(getServerName(server)));
                     }
                 }
             }
@@ -172,7 +179,9 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
             xml.append("</server_status_list>");
             out.print(xml.toString());
         } else {
-            out.print(buildServerHealthXml(currentServerName, currentServer.isMaster()));
+            out.print(buildServerHealthXml(currentServerName,
+                    currentServer.getHostname() == null || currentServer.isMaster(),
+                    getJobMap(), getTransformationMap()));
         }
     }
 
