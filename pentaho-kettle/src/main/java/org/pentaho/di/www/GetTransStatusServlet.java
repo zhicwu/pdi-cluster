@@ -196,6 +196,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
         String transName = request.getParameter("name");
         String id = request.getParameter("id");
         boolean useXML = "Y".equalsIgnoreCase(request.getParameter("xml"));
+        boolean autoRefresh = "Y".equalsIgnoreCase(request.getParameter("refresh"));
         int startLineNr = Const.toInt(request.getParameter("from"), 0);
 
         response.setStatus(HttpServletResponse.SC_OK);
@@ -285,9 +286,11 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 out.println("<HEAD>");
                 out.println("<TITLE>"
                         + BaseMessages.getString(PKG, "TransStatusServlet.KettleTransStatus") + "</TITLE>");
-                out.println("<META http-equiv=\"Refresh\" content=\"10;url="
-                        + convertContextPath(CONTEXT_PATH) + "?name=" + URLEncoder.encode(transName, "UTF-8") + "&id="
-                        + URLEncoder.encode(id, "UTF-8") + "\">");
+                if (autoRefresh) {
+                    out.println("<META http-equiv=\"Refresh\" content=\"10;url="
+                            + convertContextPath(CONTEXT_PATH) + "?name=" + URLEncoder.encode(transName, "UTF-8") + "&id="
+                            + URLEncoder.encode(id, "UTF-8") + "\">");
+                }
                 out.println("<META http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">");
                 out.println("</HEAD>");
                 out.println("<BODY>");
