@@ -25,6 +25,7 @@ import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
+import oshi.hardware.NetworkIF;
 import oshi.software.os.OperatingSystem;
 
 import javax.servlet.ServletException;
@@ -33,14 +34,88 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.util.List;
 
 public class GetHealthServlet extends BaseHttpServlet implements CartePluginInterface {
-    private static Class<?> PKG = GetHealthServlet.class; // for i18n purposes, needed by Translator2!!
+    private static final Class<?> PKG = GetHealthServlet.class; // for i18n purposes, needed by Translator2!!
 
     private static final long serialVersionUID = -4155334859966384208L;
 
+    private static final String ROOT_DIRECTORY = "/";
+
+    private static final String XML_CONTENT_TYPE = "text/xml";
+    private static final String PARAM_PARTIAL = "partial";
+    private static final String PARAM_PARTIAL_YES = "Y";
+
+    private static final String DEFAULT_SERVER_NAME = "n/a";
+    private static final String MASTER_SERVER = "master";
+    private static final String SLAVE_SERVER = "slave";
+
+    private static final String TAG_SERVER_STATUS_LIST_BEGIN = "<server_status_list>";
+    private static final String TAG_SERVER_STATUS_LIST_END = "</server_status_list>";
+    private static final String TAG_SERVER_STATUS_BEGIN = "<server_status>";
+    private static final String TAG_SERVER_STATUS_END = "</server_status>";
+    private static final String TAG_SERVER_NAME = "server_name";
+    private static final String TAG_SERVER_TYPE = "server_type";
+    private static final String TAG_SYS_UP_TIME = "sys_up_time";
+    private static final String TAG_JVM_CORES = "jvm_cores";
+    private static final String TAG_SYS_PHYSICAL_CORES = "sys_physical_cores";
+    private static final String TAG_SYS_LOGICAL_CORES = "sys_logical_cores";
+    private static final String TAG_SYS_CPU_LOAD = "sys_cpu_load";
+    private static final String TAG_SYS_LOAD_AVG = "sys_load_avg";
+    private static final String TAG_JVM_MEM_TOTAL = "jvm_mem_total";
+    private static final String TAG_JVM_MEM_FREE = "jvm_mem_free";
+    private static final String TAG_SYS_MEM_TOTAL = "sys_mem_total";
+    private static final String TAG_SYS_MEM_FREE = "sys_mem_free";
+    private static final String TAG_SYS_SWAP_TOTAL = "sys_swap_total";
+    private static final String TAG_SYS_SWAP_USED = "sys_swap_used";
+    private static final String TAG_BYTE_RECEIVED = "bytes_received";
+    private static final String TAG_BYTE_SENT = "bytes_sent";
+    private static final String TAG_SYS_DISK_TOTAL = "sys_disk_total";
+    private static final String TAG_SYS_DISK_FREE = "sys_disk_free";
+    private static final String TAG_SYS_PROCESSES = "sys_processes";
+    private static final String TAG_SYS_THREADS = "sys_threads";
+    private static final String TAG_TOTAL_JOBS = "total_jobs";
+    private static final String TAG_RUNNING_JOBS = "running_jobs";
+    private static final String TAG_STOPPED_JOBS = "stopped_jobs";
+    private static final String TAG_FAILED_JOBS = "failed_jobs";
+    private static final String TAG_FINISHED_JOBS = "finished_jobs";
+    private static final String TAG_HALTED_JOBS = "halted_jobs";
+    private static final String TAG_TOTAL_TRANS = "total_trans";
+    private static final String TAG_RUNNING_TRANS = "running_trans";
+    private static final String TAG_PAUSED_TRANS = "paused_trans";
+    private static final String TAG_STOPPED_TRANS = "stopped_trans";
+    private static final String TAG_FAILED_TRANS = "failed_trans";
+    private static final String TAG_FINISHED_TRANS = "finished_trans";
+    private static final String TAG_HALTED_TRANS = "halted_trans";
+    private static final String TAG_ELAPSED_TIME = "elapsed_time";
+
+    private static String SERVER_NAME;
+
     public static final String CONTEXT_PATH = "/kettle/health";
+    public static final String SLAVE_CONTEXT_PATH = CONTEXT_PATH + "?" + PARAM_PARTIAL + "=" + PARAM_PARTIAL_YES;
+
+    static NetworkIF getNetworkInterface(HardwareAbstractionLayer hardware) {
+        NetworkIF nif = null;
+
+        for (NetworkIF i : hardware.getNetworkIFs()) {
+            NetworkInterface n = i.getNetworkInterface();
+            try {
+                if (n.isUp() && !n.isLoopback() && !n.isPointToPoint() && !n.isVirtual()) {
+                    nif = i;
+                    break;
+                }
+            } catch (Exception e) {
+                // it's just about selecting the proper network interface
+            }
+        }
+
+        return nif;
+    }
 
     static String buildServerHealthXml(String serverName, boolean isMaster, JobMap jobMap, TransformationMap transMap) {
         Runtime jvmRuntime = Runtime.getRuntime();
@@ -52,7 +127,9 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
         HardwareAbstractionLayer hardware = sysInfo.getHardware();
         CentralProcessor processor = hardware.getProcessor();
         long sysUptime = processor.getSystemUptime();
-        double sysCpuLoad = processor.getSystemCpuLoad();
+        double sysCpuLoad = new BigDecimal(processor.getSystemCpuLoad())
+                .setScale(2, RoundingMode.HALF_UP).doubleValue();
+
         double sysLoadAvg = processor.getSystemLoadAverage();
         int sysPhysicalCores = processor.getPhysicalProcessorCount();
         int sysLogicalCores = processor.getLogicalProcessorCount();
@@ -63,7 +140,11 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
         long sysSwapTotal = memory.getSwapTotal();
         long sysSwapUsed = memory.getSwapUsed();
 
-        File root = new File("/");
+        NetworkIF nif = getNetworkInterface(hardware);
+        long bytesReceived = nif == null ? 0L : nif.getBytesRecv();
+        long bytesSent = nif == null ? 0L : nif.getPacketsSent();
+
+        File root = new File(ROOT_DIRECTORY);
         long totalDiskSpace = root.getTotalSpace();
         long usableDiskSpace = root.getUsableSpace();
 
@@ -73,59 +154,157 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
 
         return buildServerStatusXml(serverName, isMaster, sysUptime, jvmCores, sysPhysicalCores, sysLogicalCores,
                 sysCpuLoad, sysLoadAvg, jvmTotalMemory, jvmFreeMemory, sysTotalMemory, sysFreeMemory,
-                sysSwapTotal, sysSwapUsed, totalDiskSpace, usableDiskSpace, sysProcessCount, sysThreadCount,
-                jobMap, transMap);
+                sysSwapTotal, sysSwapUsed, bytesReceived, bytesSent, totalDiskSpace, usableDiskSpace,
+                sysProcessCount, sysThreadCount, jobMap, transMap);
     }
 
     static String buildDummyServerStatusXml(String serverName) {
-        return buildServerStatusXml(serverName, false, 0L, 0, 0, 0, 0.0D, 0.0D, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0, 0,
-                null, null);
+        return buildServerStatusXml(serverName, false, 0L, 0, 0, 0, 0.0D, 0.0D, 0L, 0L, 0L, 0L, 0L, 0L,
+                0L, 0L, 0L, 0L, 0, 0, null, null);
     }
 
-    static String buildServerStatusXml(String serverName, boolean serverType,
+    static String buildServerStatusXml(String serverName, boolean isMaster,
                                        long sysUptime, int jvmCores,
                                        int sysPhysicalCores, int sysLogicalCores,
                                        double sysCpuLoad, double sysLoadAvg,
                                        long jvmTotalMemory, long jvmFreeMemory,
                                        long sysTotalMemory, long sysFreeMemory,
                                        long sysSwapTotal, long sysSwapUsed,
+                                       long bytesReceived, long bytesSent,
                                        long totalDiskSpace, long usableDiskSpace,
                                        int sysProcessCount, int sysThreadCount,
                                        JobMap jobMap, TransformationMap transMap) {
+        long startTime = System.currentTimeMillis();
+
         StringBuilder xml = new StringBuilder();
 
-        xml.append("<server_status>")
-                .append(XMLHandler.addTagValue("server_name", serverName == null ? "<N/A>" : serverName))
-                .append(XMLHandler.addTagValue("server_type", serverType ? "master" : "slave"))
-                .append(XMLHandler.addTagValue("sys_up_time", sysUptime < 0L ? 0L : sysUptime))
-                .append(XMLHandler.addTagValue("jvm_cores", jvmCores < 0 ? 0 : jvmCores))
-                .append(XMLHandler.addTagValue("sys_physical_cores", sysPhysicalCores < 0 ? 0 : sysPhysicalCores))
-                .append(XMLHandler.addTagValue("sys_logical_cores", sysLogicalCores < 0 ? 0 : sysLogicalCores))
-                .append(XMLHandler.addTagValue("sys_cpu_load", sysCpuLoad < 0.0D ? 0.0D : sysCpuLoad))
-                .append(XMLHandler.addTagValue("sys_load_avg", sysLoadAvg < 0.0D ? 0.0D : sysLoadAvg))
-                .append(XMLHandler.addTagValue("jvm_mem_total", jvmTotalMemory < 0L ? 0L : jvmTotalMemory))
-                .append(XMLHandler.addTagValue("jvm_mem_free", jvmFreeMemory < 0L ? 0L : jvmFreeMemory))
-                .append(XMLHandler.addTagValue("sys_mem_total", sysTotalMemory < 0L ? 0L : sysTotalMemory))
-                .append(XMLHandler.addTagValue("sys_mem_free", sysFreeMemory < 0L ? 0L : sysFreeMemory))
-                .append(XMLHandler.addTagValue("sys_swap_total", sysSwapTotal < 0L ? 0L : sysSwapTotal))
-                .append(XMLHandler.addTagValue("sys_swap_used", sysSwapUsed < 0L ? 0L : sysSwapUsed))
-                .append(XMLHandler.addTagValue("sys_disk_total", totalDiskSpace < 0L ? 0L : totalDiskSpace))
-                .append(XMLHandler.addTagValue("sys_disk_free", usableDiskSpace < 0L ? 0L : usableDiskSpace))
-                .append(XMLHandler.addTagValue("sys_process_count", sysProcessCount < 0 ? 0 : sysProcessCount))
-                .append(XMLHandler.addTagValue("sys_thread_count", sysThreadCount < 0 ? 0 : sysThreadCount))
-                .append("</server_status>");
+        xml.append(TAG_SERVER_STATUS_BEGIN)
+                .append(XMLHandler.addTagValue(TAG_SERVER_NAME, serverName == null ? DEFAULT_SERVER_NAME : serverName))
+                .append(XMLHandler.addTagValue(TAG_SERVER_TYPE, isMaster ? MASTER_SERVER : SLAVE_SERVER))
+                .append(XMLHandler.addTagValue(TAG_SYS_UP_TIME, sysUptime < 0L ? 0L : sysUptime))
+                .append(XMLHandler.addTagValue(TAG_JVM_CORES, jvmCores < 0 ? 0 : jvmCores))
+                //.append(XMLHandler.addTagValue(TAG_SYS_PHYSICAL_CORES, sysPhysicalCores < 0 ? 0 : sysPhysicalCores))
+                //.append(XMLHandler.addTagValue(TAG_SYS_LOGICAL_CORES, sysLogicalCores < 0 ? 0 : sysLogicalCores))
+                .append(XMLHandler.addTagValue(TAG_SYS_CPU_LOAD, sysCpuLoad < 0.0D ? 0.0D : sysCpuLoad))
+                .append(XMLHandler.addTagValue(TAG_SYS_LOAD_AVG, sysLoadAvg < 0.0D ? 0.0D : sysLoadAvg))
+                .append(XMLHandler.addTagValue(TAG_JVM_MEM_TOTAL, jvmTotalMemory < 0L ? 0L : jvmTotalMemory))
+                .append(XMLHandler.addTagValue(TAG_JVM_MEM_FREE, jvmFreeMemory < 0L ? 0L : jvmFreeMemory))
+                .append(XMLHandler.addTagValue(TAG_SYS_MEM_TOTAL, sysTotalMemory < 0L ? 0L : sysTotalMemory))
+                .append(XMLHandler.addTagValue(TAG_SYS_MEM_FREE, sysFreeMemory < 0L ? 0L : sysFreeMemory))
+                .append(XMLHandler.addTagValue(TAG_SYS_SWAP_TOTAL, sysSwapTotal < 0L ? 0L : sysSwapTotal))
+                .append(XMLHandler.addTagValue(TAG_SYS_SWAP_USED, sysSwapUsed < 0L ? 0L : sysSwapUsed))
+                .append(XMLHandler.addTagValue(TAG_BYTE_RECEIVED, bytesReceived < 0L ? 0L : bytesReceived))
+                .append(XMLHandler.addTagValue(TAG_BYTE_SENT, bytesSent < 0L ? 0L : bytesSent))
+                .append(XMLHandler.addTagValue(TAG_SYS_DISK_TOTAL, totalDiskSpace < 0L ? 0L : totalDiskSpace))
+                .append(XMLHandler.addTagValue(TAG_SYS_DISK_FREE, usableDiskSpace < 0L ? 0L : usableDiskSpace))
+                .append(XMLHandler.addTagValue(TAG_SYS_PROCESSES, sysProcessCount < 0 ? 0 : sysProcessCount))
+                .append(XMLHandler.addTagValue(TAG_SYS_THREADS, sysThreadCount < 0 ? 0 : sysThreadCount));
+
+        int totalJobCount = 0;
+        int runningJobCount = 0;
+        int stoppedJobCount = 0;
+        int failedJobCount = 0;
+        int finishedJobCount = 0;
+        int haltedJobCount = 0;
+        if (jobMap != null) {
+            for (CarteObjectEntry obj : jobMap.getJobObjects()) {
+                Job job = jobMap.getJob(obj);
+                totalJobCount++;
+
+                if (job.isActive() || !job.isInitialized()) {
+                    if (job.isStopped()) {
+                        haltedJobCount++;
+                    } else {
+                        runningJobCount++;
+                    }
+                } else {
+                    if (job.isStopped()) {
+                        stoppedJobCount++;
+                    } else {
+                        if (job.getErrors() > 0) {
+                            failedJobCount++;
+                        } else {
+                            finishedJobCount++;
+                        }
+                    }
+                }
+            }
+        }
+        xml.append(XMLHandler.addTagValue(TAG_TOTAL_JOBS, totalJobCount))
+                .append(XMLHandler.addTagValue(TAG_RUNNING_JOBS, runningJobCount))
+                .append(XMLHandler.addTagValue(TAG_STOPPED_JOBS, stoppedJobCount))
+                .append(XMLHandler.addTagValue(TAG_FAILED_JOBS, failedJobCount))
+                .append(XMLHandler.addTagValue(TAG_FINISHED_JOBS, finishedJobCount))
+                .append(XMLHandler.addTagValue(TAG_HALTED_JOBS, haltedJobCount));
+
+        int totalTransCount = 0;
+        int runningTransCount = 0;
+        int haltedTransCount = 0;
+        int stoppedTransCount = 0;
+        int failedTransCount = 0;
+        int finishedTransCount = 0;
+        int pausedTransCount = 0;
+        if (transMap != null) {
+            for (CarteObjectEntry obj : transMap.getTransformationObjects()) {
+                Trans trans = transMap.getTransformation(obj);
+                totalTransCount++;
+
+                if (trans.isRunning() || trans.isPreparing() || trans.isInitializing()) {
+                    if (trans.isStopped()) {
+                        haltedTransCount++;
+                    } else {
+                        if (trans.isFinished()) {
+                            if (trans.getErrors() > 0) {
+                                failedTransCount++;
+                            } else {
+                                finishedTransCount++;
+                            }
+                        } else if (trans.isPaused()) {
+                            pausedTransCount++;
+                        } else {
+                            runningTransCount++;
+                        }
+                    }
+                } else if (trans.isStopped()) {
+                    stoppedTransCount++;
+                } else { // treat waiting as finished
+                    finishedTransCount++;
+                }
+            }
+        }
+        xml.append(XMLHandler.addTagValue(TAG_TOTAL_TRANS, totalTransCount))
+                .append(XMLHandler.addTagValue(TAG_RUNNING_TRANS, runningTransCount))
+                .append(XMLHandler.addTagValue(TAG_PAUSED_TRANS, pausedTransCount))
+                .append(XMLHandler.addTagValue(TAG_STOPPED_TRANS, stoppedTransCount))
+                .append(XMLHandler.addTagValue(TAG_FAILED_TRANS, failedTransCount))
+                .append(XMLHandler.addTagValue(TAG_FINISHED_TRANS, finishedTransCount))
+                .append(XMLHandler.addTagValue(TAG_HALTED_TRANS, haltedTransCount));
+
+        // xml.append(XMLHandler.addTagValue(TAG_ELAPSED_TIME, System.currentTimeMillis() - startTime));
+        xml.append(TAG_SERVER_STATUS_END);
 
         return xml.toString();
     }
 
-    static String getServerName(SlaveServer server) {
-        String serverName = null;
+    static String getCurrentServerName(SlaveServer server) {
+        if (SERVER_NAME == null) {
+            String serverName = getServerName(server);
+            if (serverName == null || server == null || server.getHostname() == null) {
+                try {
+                    serverName = InetAddress.getLocalHost().getHostName();
+                } catch (Exception e) {
+                    // it's just about getting host name, so let's pretend nothing happened...
+                }
+            }
 
-        if (server != null) {
-            serverName = server.getServerAndPort();
+            SERVER_NAME = serverName;
         }
 
-        return serverName;
+        return SERVER_NAME;
+    }
+
+    static String getServerName(SlaveServer server) {
+        return server == null ? null : server.getServerAndPort();
     }
 
     public GetHealthServlet() {
@@ -143,21 +322,21 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
 
         response.setStatus(HttpServletResponse.SC_OK);
 
-        response.setContentType("text/xml");
+        response.setContentType(XML_CONTENT_TYPE);
         response.setCharacterEncoding(Const.XML_ENCODING);
 
         SlaveServer currentServer = CarteSingleton.getSlaveServerConfig().getSlaveServer();
-        String currentServerName = getServerName(currentServer);
+        String currentServerName = getCurrentServerName(currentServer);
 
         PrintWriter out = response.getWriter();
 
-        boolean partialXml = "Y".equalsIgnoreCase(request.getParameter("partial"));
+        boolean partialXml = PARAM_PARTIAL_YES.equalsIgnoreCase(request.getParameter(PARAM_PARTIAL));
 
         if (!partialXml) {
             out.print(XMLHandler.getXMLHeader(Const.XML_ENCODING));
 
             StringBuilder xml = new StringBuilder();
-            xml.append("<server_status_list>").append(buildServerHealthXml(currentServerName,
+            xml.append(TAG_SERVER_STATUS_LIST_BEGIN).append(buildServerHealthXml(currentServerName,
                     currentServer.getHostname() == null || currentServer.isMaster(),
                     getJobMap(), getTransformationMap()));
 
@@ -169,14 +348,14 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                     SlaveServer server = detectedServer.getSlaveServer();
                     try {
                         xml.append(
-                                server.execService(CONTEXT_PATH + "?partial=Y&source=" + currentServer.getName()));
+                                server.execService(SLAVE_CONTEXT_PATH));
                     } catch (Exception e) {
                         xml.append(buildDummyServerStatusXml(getServerName(server)));
                     }
                 }
             }
 
-            xml.append("</server_status_list>");
+            xml.append(TAG_SERVER_STATUS_LIST_END);
             out.print(xml.toString());
         } else {
             out.print(buildServerHealthXml(currentServerName,
