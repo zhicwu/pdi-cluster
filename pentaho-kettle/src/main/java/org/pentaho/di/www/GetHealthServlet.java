@@ -39,7 +39,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.pentaho.di.www.GetStatusServlet.JOB_NAME_PARAMS;
 
@@ -155,7 +157,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
 
         OperatingSystem os = sysInfo.getOperatingSystem();
         long processUptime = 0L;
-        for(OSProcess process : os.getProcesses(0, OperatingSystem.ProcessSort.PID)) {
+        for (OSProcess process : os.getProcesses(0, OperatingSystem.ProcessSort.PID)) {
             if (process.getProcessID() == os.getProcessId()) {
                 processUptime = process.getUpTime();
                 break;
@@ -228,15 +230,21 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                 Job job = jobMap.getJob(obj);
                 totalJobCount++;
 
+                boolean foundJobName = false;
                 try {
                     for (String pName : JOB_NAME_PARAMS) {
                         String realName = job.getParameterValue(pName);
-                        if (realName != null && !jobsNames.contains(realName)) {
+
+                        if (realName != null) {
+                            foundJobName = true;
                             jobsNames.add(realName);
                             break;
                         }
                     }
                 } catch (Exception e) {
+                }
+                if (!foundJobName) {
+                    jobsNames.add(job.getName());
                 }
 
                 if (job.isActive() || !job.isInitialized()) {

@@ -23,7 +23,6 @@
 
 package org.pentaho.di.core.database;
 
-import org.pentaho.database.model.DatabaseAccessType;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.RowMetaAndData;
 import org.pentaho.di.core.encryption.Encr;
