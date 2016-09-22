@@ -26,6 +26,7 @@ import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
+import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 
 import javax.servlet.ServletException;
@@ -38,7 +39,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.util.List;
+import java.util.*;
+
+import static org.pentaho.di.www.GetStatusServlet.JOB_NAME_PARAMS;
 
 public class GetHealthServlet extends BaseHttpServlet implements CartePluginInterface {
     private static final Class<?> PKG = GetHealthServlet.class; // for i18n purposes, needed by Translator2!!
@@ -62,6 +65,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
     private static final String TAG_SERVER_NAME = "server_name";
     private static final String TAG_SERVER_TYPE = "server_type";
     private static final String TAG_SYS_UP_TIME = "sys_up_time";
+    private static final String TAG_PROC_UP_TIME = "proc_up_time";
     private static final String TAG_JVM_CORES = "jvm_cores";
     private static final String TAG_SYS_PHYSICAL_CORES = "sys_physical_cores";
     private static final String TAG_SYS_LOGICAL_CORES = "sys_logical_cores";
@@ -80,6 +84,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
     private static final String TAG_SYS_PROCESSES = "sys_processes";
     private static final String TAG_SYS_THREADS = "sys_threads";
     private static final String TAG_TOTAL_JOBS = "total_jobs";
+    private static final String TAG_UNIQUE_JOBS = "unique_jobs";
     private static final String TAG_RUNNING_JOBS = "running_jobs";
     private static final String TAG_STOPPED_JOBS = "stopped_jobs";
     private static final String TAG_FAILED_JOBS = "failed_jobs";
@@ -149,18 +154,26 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
         long usableDiskSpace = root.getUsableSpace();
 
         OperatingSystem os = sysInfo.getOperatingSystem();
+        long processUptime = 0L;
+        for(OSProcess process : os.getProcesses(0, OperatingSystem.ProcessSort.PID)) {
+            if (process.getProcessID() == os.getProcessId()) {
+                processUptime = process.getUpTime();
+                break;
+            }
+        }
+
         int sysProcessCount = os.getProcessCount();
         int sysThreadCount = os.getThreadCount();
 
         return buildServerStatusXml(serverName, isMaster, sysUptime, jvmCores, sysPhysicalCores, sysLogicalCores,
                 sysCpuLoad, sysLoadAvg, jvmTotalMemory, jvmFreeMemory, sysTotalMemory, sysFreeMemory,
                 sysSwapTotal, sysSwapUsed, bytesReceived, bytesSent, totalDiskSpace, usableDiskSpace,
-                sysProcessCount, sysThreadCount, jobMap, transMap);
+                processUptime, sysProcessCount, sysThreadCount, jobMap, transMap);
     }
 
     static String buildDummyServerStatusXml(String serverName) {
         return buildServerStatusXml(serverName, false, 0L, 0, 0, 0, 0.0D, 0.0D, 0L, 0L, 0L, 0L, 0L, 0L,
-                0L, 0L, 0L, 0L, 0, 0, null, null);
+                0L, 0L, 0L, 0L, 0L, 0, 0, null, null);
     }
 
     static String buildServerStatusXml(String serverName, boolean isMaster,
@@ -172,7 +185,8 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                                        long sysSwapTotal, long sysSwapUsed,
                                        long bytesReceived, long bytesSent,
                                        long totalDiskSpace, long usableDiskSpace,
-                                       int sysProcessCount, int sysThreadCount,
+                                       long processUptime, int sysProcessCount,
+                                       int sysThreadCount,
                                        JobMap jobMap, TransformationMap transMap) {
         long startTime = System.currentTimeMillis();
 
@@ -182,6 +196,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                 .append(XMLHandler.addTagValue(TAG_SERVER_NAME, serverName == null ? DEFAULT_SERVER_NAME : serverName))
                 .append(XMLHandler.addTagValue(TAG_SERVER_TYPE, isMaster ? MASTER_SERVER : SLAVE_SERVER))
                 .append(XMLHandler.addTagValue(TAG_SYS_UP_TIME, sysUptime < 0L ? 0L : sysUptime))
+                .append(XMLHandler.addTagValue(TAG_PROC_UP_TIME, processUptime < 0L ? 0L : processUptime))
                 .append(XMLHandler.addTagValue(TAG_JVM_CORES, jvmCores < 0 ? 0 : jvmCores))
                 //.append(XMLHandler.addTagValue(TAG_SYS_PHYSICAL_CORES, sysPhysicalCores < 0 ? 0 : sysPhysicalCores))
                 //.append(XMLHandler.addTagValue(TAG_SYS_LOGICAL_CORES, sysLogicalCores < 0 ? 0 : sysLogicalCores))
@@ -201,15 +216,28 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                 .append(XMLHandler.addTagValue(TAG_SYS_THREADS, sysThreadCount < 0 ? 0 : sysThreadCount));
 
         int totalJobCount = 0;
+        int uniqueJobCount = 0;
         int runningJobCount = 0;
         int stoppedJobCount = 0;
         int failedJobCount = 0;
         int finishedJobCount = 0;
         int haltedJobCount = 0;
         if (jobMap != null) {
+            Set<String> jobsNames = new HashSet<>();
             for (CarteObjectEntry obj : jobMap.getJobObjects()) {
                 Job job = jobMap.getJob(obj);
                 totalJobCount++;
+
+                try {
+                    for (String pName : JOB_NAME_PARAMS) {
+                        String realName = job.getParameterValue(pName);
+                        if (realName != null && !jobsNames.contains(realName)) {
+                            jobsNames.add(realName);
+                            break;
+                        }
+                    }
+                } catch (Exception e) {
+                }
 
                 if (job.isActive() || !job.isInitialized()) {
                     if (job.isStopped()) {
@@ -229,8 +257,10 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                     }
                 }
             }
+            uniqueJobCount = jobsNames.size();
         }
         xml.append(XMLHandler.addTagValue(TAG_TOTAL_JOBS, totalJobCount))
+                .append(XMLHandler.addTagValue(TAG_UNIQUE_JOBS, uniqueJobCount))
                 .append(XMLHandler.addTagValue(TAG_RUNNING_JOBS, runningJobCount))
                 .append(XMLHandler.addTagValue(TAG_STOPPED_JOBS, stoppedJobCount))
                 .append(XMLHandler.addTagValue(TAG_FAILED_JOBS, failedJobCount))

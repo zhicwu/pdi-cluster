@@ -53,7 +53,7 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
 
     // this is helpful when you implemented a job or transformation as wrapper for others
     public static final Iterable<String> JOB_NAME_PARAMS = Splitter.on(',').omitEmptyStrings().trimResults().split(
-            System.getProperty("KETTLE_JOB_NAME_PARAMS", "ETL_CALLER,BASE_DIR,ETL_SCRIPT"));
+            System.getProperty("KETTLE_JOB_NAME_PARAMS", "ETL_CALLER,ETL_SCRIPT"));
 
     public GetStatusServlet() {
     }
