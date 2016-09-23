@@ -22,6 +22,7 @@
 
 package org.pentaho.di.www;
 
+import com.google.common.base.Splitter;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.xml.XMLHandler;
@@ -51,7 +52,8 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
     public static final String CONTEXT_PATH = "/kettle/status";
 
     // this is helpful when you implemented a job or transformation as wrapper for others
-    public static final String JOB_NAME_PARAM = System.getProperty("KETTLE_JOB_NAME_PARAM", "ETL_SCRIPT");
+    public static final Iterable<String> JOB_NAME_PARAMS = Splitter.on(',').omitEmptyStrings().trimResults().split(
+            System.getProperty("KETTLE_JOB_NAME_PARAMS", "ETL_CALLER,ETL_SCRIPT"));
 
     public GetStatusServlet() {
     }
@@ -339,9 +341,17 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                     String name = entry.getName();
                     String id = entry.getId();
                     Job job = getJobMap().getJob(entry);
-                    String realName = job.getParameterValue(JOB_NAME_PARAM);
-                    realName = realName == null
-                            ? name : new StringBuilder(name).append('(').append(realName.trim()).append(')').toString();
+
+                    StringBuilder sb = new StringBuilder();
+                    for (String pName : JOB_NAME_PARAMS) {
+                        String realName = job.getParameterValue(pName);
+                        if (realName != null) {
+                            sb.append(',').append(' ').append(realName);
+                        }
+                    }
+
+                    String realName = sb.length() == 0 ? name : sb.deleteCharAt(0).deleteCharAt(0)
+                            .insert(0, '(').insert(0, name).append(')').toString();
                     String status = job.getStatus();
 
                     String removeText;

@@ -96,14 +96,10 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
         }
     }
 
-    public static boolean getForcedSsl()
-    {
-        try
-        {
+    public static boolean getForcedSsl() {
+        try {
             return "Y".equalsIgnoreCase(System.getProperty("KETTLE_FORCED_SSL"));
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             return false;
         }
     }

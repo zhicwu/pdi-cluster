@@ -57,6 +57,7 @@ import org.pentaho.di.repository.ObjectId;
 import org.pentaho.di.repository.ObjectRevision;
 import org.pentaho.di.repository.Repository;
 import org.pentaho.di.repository.RepositoryDirectoryInterface;
+import org.pentaho.di.resource.ResourceDefinitionHelper;
 import org.pentaho.di.resource.ResourceUtil;
 import org.pentaho.di.resource.TopLevelResource;
 import org.pentaho.di.trans.Trans;
@@ -1716,6 +1717,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
         // Align logging levels between execution configuration and remote server
         slaveServer.getLogChannel().setLogLevel(executionConfiguration.getLogLevel());
 
+        FileObject tempFile = null;
         try {
             // Inject certain internal variables to make it more intuitive.
             //
@@ -1739,7 +1741,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
             if (executionConfiguration.isPassingExport()) {
                 // First export the job... slaveServer.getVariable("MASTER_HOST")
                 //
-                FileObject tempFile =
+                tempFile =
                         KettleVFS.createTempFile("jobExport", ".zip", System.getProperty("java.io.tmpdir"), jobMeta);
 
                 TopLevelResource topLevelResource =
@@ -1784,6 +1786,8 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
             throw ke;
         } catch (Exception e) {
             throw new KettleException(e);
+        } finally {
+            ResourceDefinitionHelper.purge(tempFile);
         }
     }
 

@@ -5523,6 +5523,9 @@ public class TransMeta extends AbstractMeta
                 TransMeta transMeta = (TransMeta) this.realClone(false);
                 // transMeta.copyVariablesFrom(space);
 
+                // avoid endless loop
+                definitions.put(fullname, null);
+
                 // Add used resources, modify transMeta accordingly
                 // Go through the list of steps, etc.
                 // These critters change the steps in the cloned TransMeta
@@ -5758,7 +5761,7 @@ public class TransMeta extends AbstractMeta
     /**
      * Sets the log table for the transformation.
      *
-     * @param the log table to set
+     * @param transLogTable the log table to set
      */
     public void setTransLogTable(TransLogTable transLogTable) {
         this.transLogTable = transLogTable;

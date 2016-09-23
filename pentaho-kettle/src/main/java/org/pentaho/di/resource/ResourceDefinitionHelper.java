@@ -20,6 +20,7 @@ import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleFileException;
+import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.i18n.BaseMessages;
@@ -38,6 +39,10 @@ import java.util.Map;
  */
 public final class ResourceDefinitionHelper {
     private final static Class<?> PKG = JobMeta.class; // for i18n purposes, needed by Translator2!!
+
+    // FIXME this assumes kettle.properties has been loaded, which might not always true...
+    private static final boolean KEEP_EXPORTED_FILE = "Y".equalsIgnoreCase(
+            EnvUtil.getSystemProperty("KETTLE_KEEP_EXPORTED_FILE", "N"));
 
     private final static String VARIABLE_PREFIX = "${";
     private final static String VARIABLE_SUFFIX = "}";
@@ -66,6 +71,16 @@ public final class ResourceDefinitionHelper {
         }
     }
 
+    public static void purge(FileObject tempFile) {
+        if (!KEEP_EXPORTED_FILE && tempFile != null) {
+            try {
+                tempFile.delete();
+            } catch (Exception e) {
+                // pretend nothing happened
+            }
+        }
+    }
+
     public static boolean containsVariable(String name) {
         boolean hasVar = false;
 
@@ -80,7 +95,8 @@ public final class ResourceDefinitionHelper {
         return hasVar;
     }
 
-    public static boolean containsResource(Map<String, ResourceDefinition> definitions,
+    public static boolean containsResource(Repository repository,
+                                           Map<String, ResourceDefinition> definitions,
                                            VariableSpace space,
                                            ResourceNamingInterface namingInterface,
                                            AbstractMeta meta) throws KettleException {
@@ -88,8 +104,6 @@ public final class ResourceDefinitionHelper {
             return false;
         }
 
-        // String baseName;
-        // String originalPath;
         String extension = meta instanceof TransMeta ? Const.STRING_TRANS_DEFAULT_EXT : Const.STRING_JOB_DEFAULT_EXT;
         String fullname;
         try {
@@ -97,8 +111,6 @@ public final class ResourceDefinitionHelper {
             if (Const.isEmpty(meta.getFilename())) {
                 // Assume repository...
                 //
-                // originalPath = directory.getPath();
-                // baseName = meta.getName();
                 fullname =
                         directory.getPath() + (directory.getPath().endsWith(RepositoryDirectory.DIRECTORY_SEPARATOR) ? ""
                                 : RepositoryDirectory.DIRECTORY_SEPARATOR) + meta.getName() + "." + extension; //
@@ -106,21 +118,16 @@ public final class ResourceDefinitionHelper {
                 // Assume file
                 //
                 FileObject fileObject = KettleVFS.getFileObject(space.environmentSubstitute(meta.getFilename()), space);
-                // originalPath = fileObject.getParent().getName().getPath();
-                // baseName = fileObject.getName().getBaseName();
                 fullname = fileObject.getName().getPath();
             }
-            // } catch (FileSystemException e) {
-            //    throw new KettleException(
-            //            BaseMessages.getString(PKG, "JobMeta.Exception.AnErrorOccuredReadingJob", meta.getFilename()), e);
         } catch (KettleFileException e) {
             throw new KettleException(
                     BaseMessages.getString(PKG, "JobMeta.Exception.AnErrorOccuredReadingJob", meta.getFilename()), e);
         }
 
-        // String resourceName = namingInterface.nameResource(
-        //        baseName, originalPath, extension, ResourceNamingInterface.FileNamingType.JOB);
-        // logger.logBasic("=====> Checking [" + fullname + "] in " + definitions + " result=" + definitions.containsKey(fullname));
+        // if (repository != null) {
+        //    repository.getLog().logError("=====> Checking [" + fullname + "] in " + definitions + " result=" + definitions.containsKey(fullname));
+        // }
         return definitions.containsKey(fullname) || meta.equals(space);
     }
 
@@ -131,6 +138,7 @@ public final class ResourceDefinitionHelper {
             return transMeta;
         }
 
+        // rep.getLog().logError("=====> Loading Trans[" + realFileName + "], contains variable=" + containsVariable(realFileName));
         if (containsVariable(realFileName)) {
             TransMetaCollection tmc = new TransMetaCollection();
             transMeta = tmc;
@@ -156,6 +164,7 @@ public final class ResourceDefinitionHelper {
             return jobMeta;
         }
 
+        // rep.getLog().logError("=====> Loading Job[" + realFileName + "], contains variable=" + containsVariable(realFileName));
         if (containsVariable(realFileName)) {
             JobMetaCollection jmc = new JobMetaCollection();
             jobMeta = jmc;

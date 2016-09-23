@@ -80,6 +80,10 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
 
         if (isSame) {
             for (Object key : m1.keySet()) {
+                if (IGNORABLE_KEYS.contains(key)) {
+                    continue;
+                }
+
                 if (!(isSame = Objects.equals(m1.get(key), m2.get(key)))) {
                     break;
                 }
@@ -101,9 +105,10 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
         Object streamProvider = params.get(QuartzScheduler.RESERVEDMAPKEY_STREAMPROVIDER);
         streamProvider = streamProvider == null ? null : streamProvider.toString();
         Object map = params.get(RESERVEDMAPKEY_PARAMETERS);
-        Object execPolicy = map instanceof Map ? ((Map) map).get(RESERVEDMAPKEY_EXECPOLICY) : null;
+        String execPolicy = map instanceof Map
+                ? String.valueOf(((Map) map).get(RESERVEDMAPKEY_EXECPOLICY)) : EXEC_POLICY_DEFAULT;
 
-        if (streamProvider != null && EXEC_POLICY_EXCLUSIVE.equals(execPolicy) &&
+        if (streamProvider != null && execPolicy.startsWith(EXEC_POLICY_EXCLUSIVE) &&
                 (KETTLE_JOB_ACTIONID.equals(actionId) || KETTLE_TRANS_ACTIONID.equals(actionId))) {
             List<JobExecutionContext> executingJobs;
             try {
@@ -122,7 +127,8 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
                 JobDataMap dataMap = detail.getJobDataMap();
 
                 if (logger.isDebugEnabled()) {
-                    logger.debug(String.valueOf(ctx) + "\r\nTrigger = [" + ctx.getTrigger() + "]\r\nJobs are equal ? " + (jobDetail == detail));
+                    logger.debug(String.valueOf(ctx) + "\r\nTrigger = ["
+                            + ctx.getTrigger() + "]\r\nSame Jobs ? " + (jobDetail == detail));
                 }
 
                 if (key != null &&
@@ -135,16 +141,20 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
                         jobKey.getUserName().equals(key.getUserName()) &&
                         jobDetail.getGroup().equals(detail.getGroup()) &&
                         compareParameters(map, dataMap.get(RESERVEDMAPKEY_PARAMETERS))) {
-                    String msg = new StringBuilder()
+
+                    throw new JobExecutionException(new StringBuilder()
                             .append("Discard exclusive job [")
                             .append(jobKey)
                             .append("] because [")
                             .append(detail)
                             .append("] is running")
-                            .toString();
-                    logger.error(msg);
-                    throw new JobExecutionException(msg);
+                            .toString());
                 }
+            }
+
+            // trying to understand what's the action to take(block current execution or kill running jobs)
+            for (ExclusiveKettleJobAction action : ExclusiveKettleJobAction.extractActions(jobKey, execPolicy)) {
+                action.execute();
             }
         }
     }

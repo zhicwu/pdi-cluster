@@ -1432,7 +1432,8 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
     }
 
     public boolean isFetchSizeSupported() {
-        return databaseInterface.isFetchSizeSupported();
+        // it's pointless when it's a JNDI data source - you have no idea what's the real database behind
+        return databaseInterface.getAccessType() != TYPE_ACCESS_JNDI && databaseInterface.isFetchSizeSupported();
     }
 
     /**
