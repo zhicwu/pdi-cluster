@@ -72,7 +72,7 @@ public final class ResourceDefinitionHelper {
     }
 
     public static void purge(FileObject tempFile) {
-        if (KEEP_EXPORTED_FILE && tempFile != null) {
+        if (!KEEP_EXPORTED_FILE && tempFile != null) {
             try {
                 tempFile.delete();
             } catch (Exception e) {

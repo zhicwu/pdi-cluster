@@ -244,7 +244,7 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                 } catch (Exception e) {
                 }
                 if (!foundJobName) {
-                    jobsNames.add(job.getName());
+                    jobsNames.add(job.getJobname());
                 }
 
                 if (job.isActive() || !job.isInitialized()) {
