@@ -1203,7 +1203,9 @@ public class RowMeta implements RowMetaInterface {
         List<Integer> needRealClone;
 
         RowMetaCache() {
-            this(Collections.synchronizedMap(new HashMap<String, Integer>()), null);
+            // this(new HashMap<String, Integer>(), null);
+            mapping = new HashMap<>();
+            needRealClone = null;
         }
 
         /**
@@ -1212,14 +1214,20 @@ public class RowMeta implements RowMetaInterface {
          * @param rowMetaCache
          */
         RowMetaCache(RowMetaCache rowMetaCache) {
-            this(Collections.synchronizedMap(new HashMap<>(rowMetaCache.mapping)), rowMetaCache.needRealClone == null ? null
-                    : Collections.synchronizedList(new ArrayList<>(rowMetaCache.needRealClone)));
+            // the rowMetaCache might be still changing...
+            // FIXME what's the impact of getting an incomplete rowMetaCache clone?
+            synchronized (rowMetaCache) {
+                mapping = new HashMap<>(rowMetaCache.mapping);
+                needRealClone = rowMetaCache.needRealClone == null ? null : new ArrayList<>(rowMetaCache.needRealClone);
+            }
         }
 
+        /*
         RowMetaCache(Map<String, Integer> mapping, List<Integer> needRealClone) {
             this.mapping = mapping;
             this.needRealClone = needRealClone;
         }
+        */
 
         synchronized void invalidate() {
             mapping.clear();

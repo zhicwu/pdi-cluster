@@ -133,7 +133,7 @@ public class ActionAdapterQuartzJob implements Job {
         } catch (Exception e) {
             throw new LoggingJobExecutionException(Messages.getInstance().getErrorString(
                     "ActionAdapterQuartzJob.ERROR_0002_FAILED_TO_CREATE_ACTION", //$NON-NLS-1$
-                    (actionClass == null) ? "unknown" : actionClass.getName()), e); //$NON-NLS-1$
+                    String.valueOf(context.getJobDetail())), e); //$NON-NLS-1$
         }
 
         if (!(bean instanceof IAction)) {
