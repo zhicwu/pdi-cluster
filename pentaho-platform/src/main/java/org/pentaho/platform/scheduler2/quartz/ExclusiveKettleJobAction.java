@@ -18,6 +18,7 @@ package org.pentaho.platform.scheduler2.quartz;
 import com.google.common.base.Splitter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.pentaho.di.core.parameters.UnknownParamException;
 import org.pentaho.di.www.CarteObjectEntry;
 import org.pentaho.di.www.CarteSingleton;
 import org.pentaho.di.www.JobMap;
@@ -54,7 +55,7 @@ public class ExclusiveKettleJobAction {
         /**
          * Kill given jobs before running current one.
          * <p>
-         * Usage: Exclusive=(KILL=Job1,Job2,Job3...)
+         * Usage: Exclusive(KILL=Job1,Job2,Job3...)
          */
         KILL;
     }
@@ -134,10 +135,49 @@ public class ExclusiveKettleJobAction {
         return name;
     }
 
-    public void execute() throws JobExecutionException {
-        if (actionType == ActionType.DONOTHING) {
-            return;
+    private void stopJob(String carteObjId, String jobName, org.pentaho.di.job.Job job)
+            throws InterruptedException, JobExecutionException {
+        job.stopAll();
+        // check every 2 seconds until the job is no longer active, time out after 8 seconds
+        long timeLimit = System.currentTimeMillis() + KETTLE_JOB_KILLER_MAX_WAIT;
+        boolean timedout = true;
+        while (System.currentTimeMillis() < timeLimit) {
+            Thread.sleep(KETTLE_JOB_KILLER_CHECK_INTERVAL);
+            if (!job.isActive()) {
+                logger.warn(new StringBuilder()
+                        .append("Successfully killed [")
+                        .append(jobName)
+                        .append('(')
+                        .append(carteObjId)
+                        .append(")] within ~")
+                        .append((timeLimit - System.currentTimeMillis()) / 1000)
+                        .append(" seconds, before running exclusive job [")
+                        .append(jobKey)
+                        .append(']').toString());
+                timedout = false;
+                break;
+            }
         }
+
+        if (timedout) {
+            throw new JobExecutionException(new StringBuilder()
+                    .append("Stop exclusive job [")
+                    .append(jobKey)
+                    .append("] as it took too long( >= ")
+                    .append(KETTLE_JOB_KILLER_MAX_WAIT / 1000)
+                    .append(" seconds) to kill [")
+                    .append(jobName)
+                    .append('(')
+                    .append(carteObjId)
+                    .append(")]")
+                    .toString());
+        }
+    }
+
+    public void execute() throws JobExecutionException {
+        // if (actionType == ActionType.DONOTHING) {
+        //    return;
+        // }
 
         // Let's not worry about transformation for now as in general job is better on error handling than trans
         /*
@@ -152,13 +192,42 @@ public class ExclusiveKettleJobAction {
         */
 
         JobMap jobMap = CarteSingleton.getInstance().getJobMap();
-
+        String currentJobName = jobKey.getJobName();
         for (CarteObjectEntry carteObj : jobMap.getJobObjects()) {
             try {
                 org.pentaho.di.job.Job job = jobMap.getJob(carteObj);
                 if (job.isActive()) {
                     String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
-                    if (jobNames.contains(jobName)) {
+                    // kill the job instance on the consecutive 3rd time we met it
+                    if (currentJobName.equalsIgnoreCase(jobName)) { // same job, different instances
+                        String parameterValue = null;
+                        int occurence = 0;
+
+                        try {
+                            parameterValue = job.getParameterValue(KEY_ETL_OCCURENCE);
+                        } catch (UnknownParamException e) {
+                            try {
+                                job.addParameterDefinition(
+                                        KEY_ETL_OCCURENCE, String.valueOf(occurence), KEY_ETL_OCCURENCE);
+                            } catch (Exception ex) {
+                                // it's fine as long as we added the parameter definition
+                            }
+                        }
+
+                        if (parameterValue != null) {
+                            try {
+                                occurence = Integer.parseInt(parameterValue);
+                            } catch (NumberFormatException e) {
+                                // if we're not lucky then be prepared to override this
+                            }
+                        }
+
+                        if (++occurence >= KETTLE_JOB_MAX_OCCURENCE) {
+                            stopJob(carteObj.getId(), jobName, job);
+                        } else {
+                            job.setParameterValue(KEY_ETL_OCCURENCE, String.valueOf(occurence));
+                        }
+                    } else if (jobNames.contains(jobName)){
                         if (actionType == ActionType.RESPECT) {
                             throw new JobExecutionException(new StringBuilder()
                                     .append("Discard exclusive job [")
@@ -170,41 +239,7 @@ public class ExclusiveKettleJobAction {
                                     .append(")] is running")
                                     .toString());
                         } else if (actionType == ActionType.KILL) {
-                            job.stopAll();
-                            // check every 2 seconds until the job is no longer active, time out after 8 seconds
-                            long timeLimit = System.currentTimeMillis() + KETTLE_JOB_KILLER_MAX_WAIT;
-                            boolean timedout = true;
-                            while (System.currentTimeMillis() < timeLimit) {
-                                Thread.sleep(KETTLE_JOB_KILLER_CHECK_INTERVAL);
-                                if (!job.isActive()) {
-                                    logger.warn(new StringBuilder()
-                                            .append("Successfully killed [")
-                                            .append(jobName)
-                                            .append('(')
-                                            .append(carteObj.getId())
-                                            .append(")] within ~")
-                                            .append((timeLimit - System.currentTimeMillis()) / 1000)
-                                            .append(" seconds, before running exclusive job [")
-                                            .append(jobKey)
-                                            .append(']').toString());
-                                    timedout = false;
-                                    break;
-                                }
-                            }
-
-                            if (timedout) {
-                                throw new JobExecutionException(new StringBuilder()
-                                        .append("Stop exclusive job [")
-                                        .append(jobKey)
-                                        .append("] as it took too long( >= ")
-                                        .append(KETTLE_JOB_KILLER_MAX_WAIT / 1000)
-                                        .append(" seconds) to kill [")
-                                        .append(jobName)
-                                        .append('(')
-                                        .append(carteObj.getId())
-                                        .append(")]")
-                                        .toString());
-                            }
+                            stopJob(carteObj.getId(), jobName, job);
                         }
                     }
                 }
