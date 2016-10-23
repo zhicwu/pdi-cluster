@@ -53,6 +53,10 @@ public final class QuartzSchedulerHelper {
             = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_WAIT_SEC", "8000"));
     static final int KETTLE_JOB_KILLER_CHECK_INTERVAL
             = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_CHECK_INTERVAL", "2000"));
+    static final int KETTLE_JOB_CACHE_SIZE
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_CACHE_SIZE", "1000"));
+    static final int KETTLE_JOB_MAX_OCCURRENCE
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_MAX_OCCURRENCE", "3"));
 
     static final Set<String> IGNORABLE_KEYS = new HashSet<>(Arrays.asList(KEY_ETL_JOB_ID, KEY_ETL_TRACE_ID));
 

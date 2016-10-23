@@ -18,6 +18,7 @@ package org.pentaho.di.www;
 
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.core.Result;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.job.Job;
 import org.pentaho.di.trans.Trans;
@@ -257,7 +258,8 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
                     if (job.isStopped()) {
                         stoppedJobCount++;
                     } else {
-                        if (job.getErrors() > 0) {
+                        Result result = job.getResult();
+                        if (result != null && result.getNrErrors() > 0) {
                             failedJobCount++;
                         } else {
                             finishedJobCount++;
