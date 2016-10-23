@@ -110,6 +110,12 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
 
         if (streamProvider != null && execPolicy.startsWith(EXEC_POLICY_EXCLUSIVE) &&
                 (KETTLE_JOB_ACTIONID.equals(actionId) || KETTLE_TRANS_ACTIONID.equals(actionId))) {
+            // trying to understand what's the action to take(block current execution or kill running jobs)
+            for (ExclusiveKettleJobAction action : ExclusiveKettleJobAction.extractActions(jobKey, execPolicy)) {
+                action.execute();
+            }
+            
+            // now proceed general exclusive detection
             List<JobExecutionContext> executingJobs;
             try {
                 executingJobs = (List<JobExecutionContext>) scheduler.getCurrentlyExecutingJobs();
@@ -150,11 +156,6 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
                             .append("] is running")
                             .toString());
                 }
-            }
-
-            // trying to understand what's the action to take(block current execution or kill running jobs)
-            for (ExclusiveKettleJobAction action : ExclusiveKettleJobAction.extractActions(jobKey, execPolicy)) {
-                action.execute();
             }
         }
     }

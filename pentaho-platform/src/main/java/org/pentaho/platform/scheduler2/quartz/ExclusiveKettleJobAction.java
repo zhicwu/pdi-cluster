@@ -16,15 +16,17 @@
 package org.pentaho.platform.scheduler2.quartz;
 
 import com.google.common.base.Splitter;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.pentaho.di.core.parameters.UnknownParamException;
 import org.pentaho.di.www.CarteObjectEntry;
 import org.pentaho.di.www.CarteSingleton;
 import org.pentaho.di.www.JobMap;
 import org.quartz.JobExecutionException;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.*;
 
@@ -39,6 +41,31 @@ public class ExclusiveKettleJobAction {
     private static final Splitter KVP_SPLITTER = Splitter.on('=').trimResults();
     private static final Splitter JOB_SPLITTER = Splitter.on(',').omitEmptyStrings().trimResults();
     private static final Splitter KEY_SPLITTER = Splitter.on('\t').trimResults();
+
+    private static final Cache<String, Integer> jobCache
+            = CacheBuilder.newBuilder().maximumSize(KETTLE_JOB_CACHE_SIZE).build();
+
+    private static int increaseJobOccurrence(String jobId) {
+        Integer occurrence = null;
+        try {
+            occurrence = jobCache.get(jobId, new Callable<Integer>() {
+                @Override
+                public Integer call() throws Exception {
+                    return java.lang.Integer.valueOf(0);
+                }
+            });
+        } catch (Exception e) {
+            // Either checked or unchecked exception will never happen
+        }
+
+        jobCache.put(jobId, ++occurrence);
+
+        return occurrence;
+    }
+
+    private static void removeJobFromCache(String jobId) {
+        jobCache.invalidate(jobId);
+    }
 
     public enum ActionType {
         /**
@@ -70,22 +97,20 @@ public class ExclusiveKettleJobAction {
         List<ExclusiveKettleJobAction> actions = new ArrayList<>();
 
         if (executionPolicy != null && executionPolicy.startsWith(EXEC_POLICY_EXCLUSIVE)) {
-            String action;
+            String action = ActionType.DONOTHING.name();
             List<String> parts = PARAM_SPLITTER.splitToList(executionPolicy);
             if (parts.size() == 2) {
                 action = parts.get(1);
                 if (action.length() > 0 && action.charAt(action.length() - 1) == ')') {
                     action = action.substring(0, action.length() - 1);
                 }
-            } else {
-                return actions;
             }
 
             Map<String, ExclusiveKettleJobAction> cache = new HashMap<>();
             for (String str : ACTION_SPLITTER.split(action)) {
                 List<String> kvp = KVP_SPLITTER.splitToList(str);
                 if (kvp.size() == 2) {
-                    String key = kvp.get(0);
+                    String key = kvp.get(0).toLowerCase();
                     ExclusiveKettleJobAction ea = cache.get(key);
                     if (ea == null) {
                         ea = new ExclusiveKettleJobAction(jobKey, key, kvp.get(1));
@@ -95,6 +120,10 @@ public class ExclusiveKettleJobAction {
                         ea.jobNames.addAll(JOB_SPLITTER.splitToList(kvp.get(1)));
                     }
                 }
+            }
+
+            if (!cache.containsKey(ActionType.RESPECT.name().toLowerCase())) {
+                actions.add(new ExclusiveKettleJobAction(jobKey, ActionType.RESPECT.name(), jobKey.getJobName()));
             }
         }
 
@@ -175,9 +204,9 @@ public class ExclusiveKettleJobAction {
     }
 
     public void execute() throws JobExecutionException {
-        // if (actionType == ActionType.DONOTHING) {
-        //    return;
-        // }
+        if (actionType == ActionType.DONOTHING) {
+            return;
+        }
 
         // Let's not worry about transformation for now as in general job is better on error handling than trans
         /*
@@ -195,39 +224,23 @@ public class ExclusiveKettleJobAction {
         String currentJobName = jobKey.getJobName();
         for (CarteObjectEntry carteObj : jobMap.getJobObjects()) {
             try {
+                String jobId = carteObj.getId();
                 org.pentaho.di.job.Job job = jobMap.getJob(carteObj);
                 if (job.isActive()) {
                     String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
+
                     // kill the job instance on the consecutive 3rd time we met it
-                    if (currentJobName.equalsIgnoreCase(jobName)) { // same job, different instances
-                        String parameterValue = null;
-                        int occurence = 0;
+                    if (currentJobName.equals(jobName)) {
+                        int occurrence = increaseJobOccurrence(jobId);
+                        logger.warn(new StringBuilder()
+                                .append("Counting down the occurrence of ")
+                                .append(jobName).append('[').append(jobId).append("]: ")
+                                .append(KETTLE_JOB_MAX_OCCURRENCE - occurrence).toString());
 
-                        try {
-                            parameterValue = job.getParameterValue(KEY_ETL_OCCURENCE);
-                        } catch (UnknownParamException e) {
-                            try {
-                                job.addParameterDefinition(
-                                        KEY_ETL_OCCURENCE, String.valueOf(occurence), KEY_ETL_OCCURENCE);
-                            } catch (Exception ex) {
-                                // it's fine as long as we added the parameter definition
-                            }
+                        if (occurrence >= KETTLE_JOB_MAX_OCCURRENCE) {
+                            stopJob(jobId, jobName, job);
                         }
-
-                        if (parameterValue != null) {
-                            try {
-                                occurence = Integer.parseInt(parameterValue);
-                            } catch (NumberFormatException e) {
-                                // if we're not lucky then be prepared to override this
-                            }
-                        }
-
-                        if (++occurence >= KETTLE_JOB_MAX_OCCURENCE) {
-                            stopJob(carteObj.getId(), jobName, job);
-                        } else {
-                            job.setParameterValue(KEY_ETL_OCCURENCE, String.valueOf(occurence));
-                        }
-                    } else if (jobNames.contains(jobName)){
+                    } else if (jobNames.contains(jobName)) {
                         if (actionType == ActionType.RESPECT) {
                             throw new JobExecutionException(new StringBuilder()
                                     .append("Discard exclusive job [")
@@ -235,13 +248,15 @@ public class ExclusiveKettleJobAction {
                                     .append("] because [")
                                     .append(jobName)
                                     .append('(')
-                                    .append(carteObj.getId())
+                                    .append(jobId)
                                     .append(")] is running")
                                     .toString());
                         } else if (actionType == ActionType.KILL) {
-                            stopJob(carteObj.getId(), jobName, job);
+                            stopJob(jobId, jobName, job);
                         }
                     }
+                } else {
+                    removeJobFromCache(jobId);
                 }
             } catch (JobExecutionException e) {
                 throw e;
