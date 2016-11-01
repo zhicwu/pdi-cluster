@@ -42,25 +42,46 @@ public class ExclusiveKettleJobAction {
     private static final Splitter JOB_SPLITTER = Splitter.on(',').omitEmptyStrings().trimResults();
     private static final Splitter KEY_SPLITTER = Splitter.on('\t').trimResults();
 
-    private static final Cache<String, Integer> jobCache
+    private static final Cache<String, long[]> jobCache
             = CacheBuilder.newBuilder().maximumSize(KETTLE_JOB_CACHE_SIZE).build();
 
-    private static int increaseJobOccurrence(String jobId) {
-        Integer occurrence = null;
+    private static long increaseJobOccurrence(String jobId) {
+        long[] occurrence = null;
         try {
-            occurrence = jobCache.get(jobId, new Callable<Integer>() {
+            occurrence = jobCache.get(jobId, new Callable<long[]>() {
                 @Override
-                public Integer call() throws Exception {
-                    return java.lang.Integer.valueOf(0);
+                public long[] call() throws Exception {
+                    return new long[]{System.currentTimeMillis(), 0L};
                 }
             });
         } catch (Exception e) {
             // Either checked or unchecked exception will never happen
         }
 
-        jobCache.put(jobId, ++occurrence);
+        long currentTimestamp = System.currentTimeMillis();
+        long diff = currentTimestamp - occurrence[0];
+        long counter = occurrence[1];
+        if (diff >= KETTLE_JOB_MAX_DURATION) {
+            logger.warn(new StringBuffer()
+                    .append("Decided kill job [")
+                    .append(jobId)
+                    .append("] as it's running for too long (>=")
+                    .append(KETTLE_JOB_MAX_DURATION)
+                    .append("ms)").toString());
+            counter = KETTLE_JOB_MAX_OCCURRENCE;
+        } else if (diff >= KETTLE_JOB_OCCURRENCE_INTERVAL) {
+            jobCache.put(jobId, new long[]{currentTimestamp, ++counter});
+        } else {
+            logger.debug(new StringBuffer()
+                    .append("Ignore this occurrence of [")
+                    .append(jobId)
+                    .append("] to avoid double count within ")
+                    .append(KETTLE_JOB_OCCURRENCE_INTERVAL)
+                    .append("ms").toString());
+            counter = -1;
+        }
 
-        return occurrence;
+        return counter;
     }
 
     private static void removeJobFromCache(String jobId) {
@@ -90,6 +111,7 @@ public class ExclusiveKettleJobAction {
     /**
      * Parse the given action string.
      *
+     * @param jobKey          key of quartz job
      * @param executionPolicy action string, for example: "Exclusive(Kill=Job1,Job2;Respect=Job3)"
      * @return parsed action list
      */
@@ -203,7 +225,7 @@ public class ExclusiveKettleJobAction {
         }
     }
 
-    public void execute() throws JobExecutionException {
+    public void execute(Phase phase) throws JobExecutionException {
         if (actionType == ActionType.DONOTHING) {
             return;
         }
@@ -230,12 +252,17 @@ public class ExclusiveKettleJobAction {
                     String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
 
                     // kill the job instance on the consecutive 3rd time we met it
-                    if (currentJobName.equals(jobName)) {
-                        int occurrence = increaseJobOccurrence(jobId);
+                    if (phase == Phase.EXECUTION
+                            && actionType == ActionType.RESPECT && currentJobName.equals(jobName)) {
+                        long occurrence = increaseJobOccurrence(jobId);
+                        if (occurrence < 0) {
+                            continue;
+                        }
+
                         logger.warn(new StringBuilder()
                                 .append("Counting down the occurrence of ")
                                 .append(jobName).append('[').append(jobId).append("]: ")
-                                .append(KETTLE_JOB_MAX_OCCURRENCE - occurrence).toString());
+                                .append(KETTLE_JOB_MAX_OCCURRENCE - occurrence + 1).toString());
 
                         if (occurrence >= KETTLE_JOB_MAX_OCCURRENCE) {
                             stopJob(jobId, jobName, job);

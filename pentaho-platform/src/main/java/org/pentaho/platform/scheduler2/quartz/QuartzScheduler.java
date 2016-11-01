@@ -277,7 +277,7 @@ public class QuartzScheduler implements IScheduler {
         try {
             Scheduler scheduler = getQuartzScheduler();
 
-            QuartzSchedulerHelper.applyJobExecutionRules(scheduler, jobDetail);
+            QuartzSchedulerHelper.applyJobExecutionRules(QuartzSchedulerHelper.Phase.CREATION, scheduler, jobDetail);
 
             if (triggerCalendar != null) {
                 scheduler.addCalendar(jobId.toString(), triggerCalendar, false, false);
@@ -343,7 +343,7 @@ public class QuartzScheduler implements IScheduler {
             }
 
             JobDetail jobDetail = createJobDetails(jobKey, jobParams);
-            QuartzSchedulerHelper.applyJobExecutionRules(scheduler, jobDetail);
+            QuartzSchedulerHelper.applyJobExecutionRules(QuartzSchedulerHelper.Phase.UPDATING, scheduler, jobDetail);
             scheduler.addJob(jobDetail, true);
             if (triggerCalendar != null) {
                 scheduler.addCalendar(jobId.toString(), triggerCalendar, true, true);

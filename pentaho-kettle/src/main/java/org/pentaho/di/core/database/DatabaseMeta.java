@@ -504,6 +504,11 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
 
         addExtraOption(mySQL, "defaultFetchSize", "500");
         addExtraOption(mySQL, "useCursorFetch", "true");
+        // Timeout for socket connect (in milliseconds), with 0 being no timeout.
+        // Only works on JDK-1.4 or newer. Defaults to '0'.
+        // addExtraOption(mySQL, "connectTimeout", "10000"); // 10 seconds
+        // Timeout on network socket operations (0, the default means no timeout).
+        // addExtraOption(mySQL, "socketTimeout", "60000"); // 60 seconds, same as net_write_timeout on server-side
 
         String infoBright = infoBrightPlugin.getIds()[0];
 

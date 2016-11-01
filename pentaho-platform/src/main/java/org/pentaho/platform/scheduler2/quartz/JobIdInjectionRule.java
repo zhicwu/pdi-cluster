@@ -36,7 +36,7 @@ public class JobIdInjectionRule {
 
     private static final Log logger = LogFactory.getLog(JobIdInjectionRule.class);
 
-    void applyRule(Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+    void applyRule(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
         QuartzJobKey jobKey = extractJobKey(jobDetail);
 
         if (scheduler == null || jobKey == null) {
