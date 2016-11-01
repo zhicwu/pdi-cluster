@@ -31,6 +31,12 @@ import java.util.Set;
  * @author Zhichun Wu
  */
 public final class QuartzSchedulerHelper {
+    public enum Phase {
+        CREATION,
+        EXECUTION,
+        UPDATING;
+    }
+
     static final String RESERVEDMAPKEY_PARAMETERS = "parameters";
     static final String RESERVEDMAPKEY_EXECPOLICY = "executionPolicy";
 
@@ -55,8 +61,12 @@ public final class QuartzSchedulerHelper {
             = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_CHECK_INTERVAL", "2000"));
     static final int KETTLE_JOB_CACHE_SIZE
             = Integer.parseInt(System.getProperty("KETTLE_JOB_CACHE_SIZE", "1000"));
+    static final int KETTLE_JOB_OCCURRENCE_INTERVAL
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_OCCURRENCE_INTERVAL", "1000"));
     static final int KETTLE_JOB_MAX_OCCURRENCE
             = Integer.parseInt(System.getProperty("KETTLE_JOB_MAX_OCCURRENCE", "3"));
+    static final long KETTLE_JOB_MAX_DURATION
+            = Long.parseLong(System.getProperty("KETTLE_JOB_MAX_DURATION", String.valueOf(4 * 60 * 1000))); // 4 hours
 
     static final Set<String> IGNORABLE_KEYS = new HashSet<>(Arrays.asList(KEY_ETL_JOB_ID, KEY_ETL_TRACE_ID));
 
@@ -98,8 +108,9 @@ public final class QuartzSchedulerHelper {
     }
 
     // http://stackoverflow.com/questions/2676295/quartz-preventing-concurrent-instances-of-a-job-in-jobs-xml
-    static void applyJobExecutionRules(Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
-        JobIdInjectionRule.instance.applyRule(scheduler, jobDetail);
-        ExclusiveKettleJobRule.instance.applyRule(scheduler, jobDetail);
+    static void applyJobExecutionRules(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+        JobIdInjectionRule.instance.applyRule(phase, scheduler, jobDetail);
+
+        ExclusiveKettleJobRule.instance.applyRule(phase, scheduler, jobDetail);
     }
 }

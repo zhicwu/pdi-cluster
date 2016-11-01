@@ -93,7 +93,7 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
         return isSame;
     }
 
-    void applyRule(Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+    void applyRule(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
         QuartzJobKey jobKey = extractJobKey(jobDetail);
 
         if (scheduler == null || jobKey == null) {
@@ -112,9 +112,9 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
                 (KETTLE_JOB_ACTIONID.equals(actionId) || KETTLE_TRANS_ACTIONID.equals(actionId))) {
             // trying to understand what's the action to take(block current execution or kill running jobs)
             for (ExclusiveKettleJobAction action : ExclusiveKettleJobAction.extractActions(jobKey, execPolicy)) {
-                action.execute();
+                action.execute(phase);
             }
-            
+
             // now proceed general exclusive detection
             List<JobExecutionContext> executingJobs;
             try {
