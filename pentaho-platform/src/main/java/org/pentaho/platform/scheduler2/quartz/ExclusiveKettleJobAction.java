@@ -46,24 +46,26 @@ public class ExclusiveKettleJobAction {
             = CacheBuilder.newBuilder().maximumSize(KETTLE_JOB_CACHE_SIZE).build();
 
     private static long increaseJobOccurrence(String jobId) {
+        final long currentTimestamp = System.currentTimeMillis();
+
         long[] occurrence = null;
         try {
             occurrence = jobCache.get(jobId, new Callable<long[]>() {
                 @Override
                 public long[] call() throws Exception {
-                    return new long[]{System.currentTimeMillis(), 0L};
+                    return new long[]{currentTimestamp - KETTLE_JOB_OCCURRENCE_INTERVAL, 0L};
                 }
             });
         } catch (Exception e) {
             // Either checked or unchecked exception will never happen
+            occurrence = new long[]{currentTimestamp - KETTLE_JOB_OCCURRENCE_INTERVAL, 0L};
         }
 
-        long currentTimestamp = System.currentTimeMillis();
         long diff = currentTimestamp - occurrence[0];
         long counter = occurrence[1];
         if (diff >= KETTLE_JOB_MAX_DURATION) {
             logger.warn(new StringBuffer()
-                    .append("Decided kill job [")
+                    .append("Decided to kill job [")
                     .append(jobId)
                     .append("] as it's running for too long (>=")
                     .append(KETTLE_JOB_MAX_DURATION)
@@ -252,8 +254,7 @@ public class ExclusiveKettleJobAction {
                     String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
 
                     // kill the job instance on the consecutive 3rd time we met it
-                    if (phase == Phase.EXECUTION
-                            && actionType == ActionType.RESPECT && currentJobName.equals(jobName)) {
+                    if (actionType == ActionType.RESPECT && currentJobName.equals(jobName)) {
                         long occurrence = increaseJobOccurrence(jobId);
                         if (occurrence < 0) {
                             continue;
