@@ -24,6 +24,8 @@ package org.pentaho.di.cluster;
 
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
+import org.apache.commons.httpclient.params.HttpClientParams;
+import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -39,6 +41,21 @@ import java.security.cert.X509Certificate;
  * @author matt
  */
 public class SlaveConnectionManager {
+    static final int KETTLE_HTTPCLIENT_MAX_CONNECTIONS_PER_HOST
+            = Integer.parseInt(System.getProperty("KETTLE_HTTPCLIENT_MAX_CONNECTIONS_PER_HOST", "100"));
+    static final int KETTLE_HTTPCLIENT_MAX_CONNECTIONS
+            = Integer.parseInt(System.getProperty("KETTLE_HTTPCLIENT_MAX_CONNECTIONS", "200"));
+    static final boolean KETTLE_HTTPCLIENT_STALE_CHECKING
+            = "Y".equalsIgnoreCase(System.getProperty("KETTLE_HTTPCLIENT_STALE_CHECKING", "Y"));
+
+    static final int KETTLE_HTTPCLIENT_CONNECTION_TIMEOUT
+            = Integer.parseInt(System.getProperty("KETTLE_HTTPCLIENT_CONNECTION_TIMEOUT", "5"));
+
+    static final int KETTLE_HTTPCLIENT_CONNECTION_MANAGER_TIMEOUT = KETTLE_HTTPCLIENT_CONNECTION_TIMEOUT;
+    static final int KETTLE_HTTPCLIENT_SOCKET_TIMEOUT
+            = Integer.parseInt(System.getProperty("KETTLE_HTTPCLIENT_SOCKET_TIMEOUT", "30"));
+    static final int KETTLE_HTTPCLIENT_SOCKET_LINGER
+            = Integer.parseInt(System.getProperty("KETTLE_HTTPCLIENT_SOCKET_LINGER", "15"));
 
     private static final String SSL = "SSL";
     private static final String KEYSTORE_SYSTEM_PROPERTY = "javax.net.ssl.keyStore";
@@ -58,8 +75,13 @@ public class SlaveConnectionManager {
             }
         }
         manager = new MultiThreadedHttpConnectionManager();
-        manager.getParams().setDefaultMaxConnectionsPerHost(100);
-        manager.getParams().setMaxTotalConnections(200);
+        HttpConnectionManagerParams connParams = manager.getParams();
+        connParams.setDefaultMaxConnectionsPerHost(KETTLE_HTTPCLIENT_MAX_CONNECTIONS_PER_HOST);
+        connParams.setMaxTotalConnections(KETTLE_HTTPCLIENT_MAX_CONNECTIONS);
+
+        connParams.setConnectionTimeout(KETTLE_HTTPCLIENT_CONNECTION_TIMEOUT * 1000);
+        connParams.setLinger(KETTLE_HTTPCLIENT_SOCKET_LINGER);
+        connParams.setStaleCheckingEnabled(KETTLE_HTTPCLIENT_STALE_CHECKING);
     }
 
     private static boolean needToInitializeSSLContext() {
@@ -74,7 +96,15 @@ public class SlaveConnectionManager {
     }
 
     public HttpClient createHttpClient() {
-        return new HttpClient(manager);
+        HttpClient client = new HttpClient(manager);
+
+        HttpClientParams clientParams = client.getParams();
+
+        clientParams.setConnectionManagerTimeout(KETTLE_HTTPCLIENT_CONNECTION_MANAGER_TIMEOUT * 1000);
+        clientParams.setSoTimeout(KETTLE_HTTPCLIENT_SOCKET_TIMEOUT * 1000);
+        client.getHostConfiguration().getParams().setDefaults(clientParams);
+
+        return client;
     }
 
     public void shutdown() {

@@ -213,6 +213,7 @@ public class ExclusiveKettleJobAction {
         }
 
         if (timedout) {
+            removeJobFromCache(carteObjId);
             throw new JobExecutionException(new StringBuilder()
                     .append("Stop exclusive job [")
                     .append(jobKey)
@@ -250,7 +251,7 @@ public class ExclusiveKettleJobAction {
             try {
                 String jobId = carteObj.getId();
                 org.pentaho.di.job.Job job = jobMap.getJob(carteObj);
-                if (job.isActive()) {
+                if (job.isActive() && !job.isStopped()) {
                     String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
 
                     // kill the job instance on the consecutive 3rd time we met it

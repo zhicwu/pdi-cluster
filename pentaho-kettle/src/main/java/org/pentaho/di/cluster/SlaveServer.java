@@ -55,6 +55,8 @@ import java.net.URLEncoder;
 import java.text.MessageFormat;
 import java.util.*;
 
+import static org.pentaho.di.cluster.SlaveConnectionManager.KETTLE_HTTPCLIENT_SOCKET_TIMEOUT;
+
 public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectInterface, VariableSpace,
         RepositoryElementInterface, XMLInterface {
     private static Class<?> PKG = SlaveServer.class; // for i18n purposes, needed by Translator2!!
@@ -507,6 +509,7 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
         method.setRequestEntity(new InputStreamRequestEntity(is));
         method.setDoAuthentication(true);
         method.addRequestHeader(new Header("Content-Type", "binary/zip"));
+        method.getParams().setSoTimeout(KETTLE_HTTPCLIENT_SOCKET_TIMEOUT * 1000);
 
         return method;
     }
@@ -671,6 +674,9 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
         for (String key : headerValues.keySet()) {
             method.setRequestHeader(key, headerValues.get(key));
         }
+
+        method.getParams().setSoTimeout(KETTLE_HTTPCLIENT_SOCKET_TIMEOUT * 1000);
+
         return method;
     }
 

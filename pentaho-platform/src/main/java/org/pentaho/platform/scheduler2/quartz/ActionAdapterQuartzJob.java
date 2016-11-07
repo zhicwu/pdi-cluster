@@ -120,8 +120,8 @@ public class ActionAdapterQuartzJob implements Job {
             // ignore
         }
 
-        QuartzSchedulerHelper.applyJobExecutionRules(QuartzSchedulerHelper.Phase.EXECUTION,
-                scheduler, context == null ? null : context.getJobDetail());
+        QuartzSchedulerHelper.applyJobExecutionRules(
+                QuartzSchedulerHelper.Phase.EXECUTION, scheduler, context.getJobDetail(), context);
 
         JobDataMap jobDataMap = context.getMergedJobDataMap();
         String actionUser = jobDataMap.getString(QuartzScheduler.RESERVEDMAPKEY_ACTIONUSER);
