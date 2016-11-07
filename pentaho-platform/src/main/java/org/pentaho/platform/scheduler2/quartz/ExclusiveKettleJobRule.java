@@ -93,7 +93,12 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
         return isSame;
     }
 
-    void applyRule(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+    void applyRule(Phase phase, Scheduler scheduler,
+                   JobDetail jobDetail, JobExecutionContext context) throws JobExecutionException {
+        if (context != null) {
+            jobDetail = context.getJobDetail();
+        }
+
         QuartzJobKey jobKey = extractJobKey(jobDetail);
 
         if (scheduler == null || jobKey == null) {
@@ -125,8 +130,15 @@ public class ExclusiveKettleJobRule { // implements TriggerListener {
 
             for (JobExecutionContext ctx : executingJobs) {
                 JobDetail detail = ctx.getJobDetail();
+
                 if (jobDetail == detail) { // ignore the exact same job
                     continue;
+                } else if ((context != null && Objects.equals(context.getTrigger(), ctx.getTrigger())
+                        && Objects.equals(context.getJobInstance(), ctx.getJobInstance()))) {
+                    // https://gist.github.com/monk8800/3891516
+                    logger.warn("Duplicated job instance identified: [" + ctx.getTrigger()
+                            + "], Current Instance=[" + context.getJobInstance()
+                            + "], Running Instance=[" + ctx.getJobInstance() + "]");
                 }
 
                 QuartzJobKey key = extractJobKey(detail);

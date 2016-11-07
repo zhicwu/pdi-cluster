@@ -15,10 +15,7 @@
  ******************************************************************************/
 package org.pentaho.platform.scheduler2.quartz;
 
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
+import org.quartz.*;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -110,9 +107,10 @@ public final class QuartzSchedulerHelper {
     }
 
     // http://stackoverflow.com/questions/2676295/quartz-preventing-concurrent-instances-of-a-job-in-jobs-xml
-    static void applyJobExecutionRules(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+    static void applyJobExecutionRules(Phase phase, Scheduler scheduler,
+                                       JobDetail jobDetail, JobExecutionContext context) throws JobExecutionException {
         JobIdInjectionRule.instance.applyRule(phase, scheduler, jobDetail);
 
-        ExclusiveKettleJobRule.instance.applyRule(phase, scheduler, jobDetail);
+        ExclusiveKettleJobRule.instance.applyRule(phase, scheduler, jobDetail, context);
     }
 }
