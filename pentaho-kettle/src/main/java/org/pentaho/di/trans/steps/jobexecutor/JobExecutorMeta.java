@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -36,8 +36,10 @@ import org.pentaho.di.core.row.ValueMeta;
 import org.pentaho.di.core.row.ValueMetaInterface;
 import org.pentaho.di.core.row.value.ValueMetaBoolean;
 import org.pentaho.di.core.row.value.ValueMetaFactory;
+import org.pentaho.di.core.row.value.ValueMetaInteger;
 import org.pentaho.di.core.row.value.ValueMetaString;
 import org.pentaho.di.core.util.CurrentDirectoryResolver;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
@@ -198,13 +200,15 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         resultRowsField = new String[0];
     }
 
+    @Override
     public Object clone() {
         Object retval = super.clone();
         return retval;
     }
 
+    @Override
     public String getXML() {
-        StringBuffer retval = new StringBuffer(300);
+        StringBuilder retval = new StringBuilder(300);
 
         retval.append("    ").append(
                 XMLHandler.addTagValue("specification_method", specificationMethod == null ? null : specificationMethod
@@ -290,12 +294,13 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         return retval.toString();
     }
 
+    @Override
     public void loadXML(Node stepnode, List<DatabaseMeta> databases, IMetaStore metaStore) throws KettleXMLException {
         try {
             String method = XMLHandler.getTagValue(stepnode, "specification_method");
             specificationMethod = ObjectLocationSpecificationMethod.getSpecificationMethodByCode(method);
             String jobId = XMLHandler.getTagValue(stepnode, "job_object_id");
-            jobObjectId = Const.isEmpty(jobId) ? null : new StringObjectId(jobId);
+            jobObjectId = Utils.isEmpty(jobId) ? null : new StringObjectId(jobId);
 
             jobName = XMLHandler.getTagValue(stepnode, "job_name");
             fileName = XMLHandler.getTagValue(stepnode, "filename");
@@ -354,11 +359,12 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         }
     }
 
+    @Override
     public void readRep(Repository rep, IMetaStore metaStore, ObjectId id_step, List<DatabaseMeta> databases) throws KettleException {
         String method = rep.getStepAttributeString(id_step, "specification_method");
         specificationMethod = ObjectLocationSpecificationMethod.getSpecificationMethodByCode(method);
         String jobId = rep.getStepAttributeString(id_step, "job_object_id");
-        jobObjectId = Const.isEmpty(jobId) ? null : new StringObjectId(jobId);
+        jobObjectId = Utils.isEmpty(jobId) ? null : new StringObjectId(jobId);
         jobName = rep.getStepAttributeString(id_step, "job_name");
         fileName = rep.getStepAttributeString(id_step, "filename");
         directoryPath = rep.getStepAttributeString(id_step, "directory_path");
@@ -404,6 +410,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         resultFilesFileNameField = rep.getStepAttributeString(id_step, "result_files_file_name_field");
     }
 
+    @Override
     public void saveRep(Repository rep, IMetaStore metaStore, ObjectId id_transformation, ObjectId id_step) throws KettleException {
         rep.saveStepAttribute(id_transformation, id_step, "specification_method", specificationMethod == null
                 ? null : specificationMethod.getCode());
@@ -468,6 +475,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         rep.saveStepAttribute(id_transformation, id_step, "result_files_file_name_field", resultFilesFileNameField);
     }
 
+    @Override
     public void setDefault() {
         specificationMethod = ObjectLocationSpecificationMethod.FILENAME;
         parameters = new JobExecutorParameters();
@@ -495,6 +503,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         resultFilesFileNameField = "FileName";
     }
 
+    @Override
     public void getFields(RowMetaInterface row, String origin, RowMetaInterface[] info, StepMeta nextStep,
                           VariableSpace space, Repository repository, IMetaStore metaStore) throws KettleStepException {
 
@@ -508,67 +517,67 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             }
         } else if (nextStep != null
                 && resultFilesTargetStepMeta != null && nextStep.equals(resultFilesTargetStepMeta)) {
-            if (!Const.isEmpty(resultFilesFileNameField)) {
-                ValueMetaInterface value = new ValueMeta("filename", ValueMeta.TYPE_STRING, 255, 0);
+            if (!Utils.isEmpty(resultFilesFileNameField)) {
+                ValueMetaInterface value = new ValueMetaString("filename", 255, 0);
                 row.addValueMeta(value);
             }
         } else if (nextStep != null
                 && executionResultTargetStepMeta != null && nextStep.equals(executionResultTargetStepMeta)) {
-            if (!Const.isEmpty(executionTimeField)) {
-                ValueMetaInterface value = new ValueMeta(executionTimeField, ValueMeta.TYPE_INTEGER, 15, 0);
+            if (!Utils.isEmpty(executionTimeField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionTimeField, 15, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionResultField)) {
+            if (!Utils.isEmpty(executionResultField)) {
                 ValueMetaInterface value = new ValueMetaBoolean(executionResultField);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionNrErrorsField)) {
-                ValueMetaInterface value = new ValueMeta(executionNrErrorsField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionNrErrorsField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionNrErrorsField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesReadField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesReadField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesReadField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesReadField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesWrittenField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesWrittenField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesWrittenField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesWrittenField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesInputField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesInputField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesInputField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesInputField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesOutputField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesOutputField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesOutputField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesOutputField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesRejectedField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesRejectedField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesRejectedField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesRejectedField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesUpdatedField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesUpdatedField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesUpdatedField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesUpdatedField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLinesDeletedField)) {
-                ValueMetaInterface value = new ValueMeta(executionLinesDeletedField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionLinesDeletedField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionLinesDeletedField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionFilesRetrievedField)) {
-                ValueMetaInterface value = new ValueMeta(executionFilesRetrievedField, ValueMeta.TYPE_INTEGER, 9, 0);
+            if (!Utils.isEmpty(executionFilesRetrievedField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionFilesRetrievedField, 9, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionExitStatusField)) {
-                ValueMetaInterface value = new ValueMeta(executionExitStatusField, ValueMeta.TYPE_INTEGER, 3, 0);
+            if (!Utils.isEmpty(executionExitStatusField)) {
+                ValueMetaInterface value = new ValueMetaInteger(executionExitStatusField, 3, 0);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLogTextField)) {
+            if (!Utils.isEmpty(executionLogTextField)) {
                 ValueMetaInterface value = new ValueMetaString(executionLogTextField);
                 value.setLargeTextField(true);
                 row.addValueMeta(value);
             }
-            if (!Const.isEmpty(executionLogChannelIdField)) {
-                ValueMetaInterface value = new ValueMeta(executionLogChannelIdField, ValueMeta.TYPE_STRING, 50, 0);
+            if (!Utils.isEmpty(executionLogChannelIdField)) {
+                ValueMetaInterface value = new ValueMetaString(executionLogChannelIdField, 50, 0);
                 row.addValueMeta(value);
             }
         }
@@ -584,10 +593,10 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
 
         List<String> targetSteps = new ArrayList<String>();
 
-        if (!Const.isEmpty(resultFilesTargetStep)) {
+        if (!Utils.isEmpty(resultFilesTargetStep)) {
             targetSteps.add(resultFilesTargetStep);
         }
-        if (!Const.isEmpty(resultRowsTargetStep)) {
+        if (!Utils.isEmpty(resultRowsTargetStep)) {
             targetSteps.add(resultRowsTargetStep);
         }
 
@@ -658,7 +667,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 String realDirectory = tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath());
 
                 if (rep != null) {
-                    if (!Const.isEmpty(realJobname) && !Const.isEmpty(realDirectory)) {
+                    if (!Utils.isEmpty(realJobname) && !Utils.isEmpty(realDirectory)) {
                         realDirectory = r.normalizeSlashes(realDirectory);
                         RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
                         if (repdir != null) {
@@ -711,6 +720,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         return mappingJobMeta;
     }
 
+    @Override
     public void check(List<CheckResultInterface> remarks, TransMeta transMeta, StepMeta stepMeta,
                       RowMetaInterface prev, String[] input, String[] output, RowMetaInterface info, VariableSpace space,
                       Repository repository, IMetaStore metaStore) {
@@ -741,6 +751,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         }
     }
 
+    @Override
     public StepInterface getStep(StepMeta stepMeta, StepDataInterface stepDataInterface, int cnr, TransMeta tr,
                                  Trans trans) {
         return new JobExecutor(stepMeta, stepDataInterface, cnr, tr, trans);
@@ -754,12 +765,12 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         ResourceReference reference = new ResourceReference(stepInfo);
         references.add(reference);
 
-        if (!Const.isEmpty(realFilename)) {
+        if (!Utils.isEmpty(realFilename)) {
             // Add the filename to the references, including a reference to this step
             // meta data.
             //
             reference.getEntries().add(new ResourceEntry(realFilename, ResourceType.ACTIONFILE));
-        } else if (!Const.isEmpty(realTransname)) {
+        } else if (!Utils.isEmpty(realTransname)) {
             // Add the filename to the references, including a reference to this step
             // meta data.
             //
@@ -827,6 +838,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         }
     }
 
+    @Override
     public StepDataInterface getStepData() {
         return new JobExecutorData();
     }
@@ -852,6 +864,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
      *
      * @param stream The optional stream to handle.
      */
+    @Override
     public void handleStreamSelection(StreamInterface stream) {
         // This step targets another step.
         // Make sure that we don't specify the same step for more than 1 target...
@@ -878,6 +891,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
     /**
      * Remove the cached {@link StepIOMeta} so it is recreated when it is next accessed.
      */
+    @Override
     public void resetStepIoMeta() {
     }
 
@@ -888,6 +902,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
         resultFilesTargetStepMeta = StepMeta.findStep(steps, resultFilesTargetStep);
     }
 
+    @Override
     public TransformationType[] getSupportedTransformationTypes() {
         return new TransformationType[]{TransformationType.Normal,};
     }
@@ -951,6 +966,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
     /**
      * @return the repository
      */
+    @Override
     public Repository getRepository() {
         return repository;
     }
@@ -958,6 +974,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
     /**
      * @param repository the repository to set
      */
+    @Override
     public void setRepository(Repository repository) {
         this.repository = repository;
     }
@@ -1418,15 +1435,17 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
     /**
      * @return The objects referenced in the step, like a mapping, a transformation, a job, ...
      */
+    @Override
     public String[] getReferencedObjectDescriptions() {
         return new String[]{BaseMessages.getString(PKG, "JobExecutorMeta.ReferencedObject.Description"),};
     }
 
     private boolean isJobDefined() {
-        return !Const.isEmpty(fileName)
-                || jobObjectId != null || (!Const.isEmpty(this.directoryPath) && !Const.isEmpty(jobName));
+        return !Utils.isEmpty(fileName)
+                || jobObjectId != null || (!Utils.isEmpty(this.directoryPath) && !Utils.isEmpty(jobName));
     }
 
+    @Override
     public boolean[] isReferencedObjectEnabled() {
         return new boolean[]{isJobDefined(),};
     }
@@ -1441,6 +1460,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
      * @return the referenced object once loaded
      * @throws KettleException
      */
+    @Override
     public Object loadReferencedObject(int index, Repository rep, IMetaStore metaStore, VariableSpace space) throws KettleException {
         return loadJobMeta(this, rep, metaStore, space);
     }

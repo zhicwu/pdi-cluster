@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -29,6 +29,7 @@ import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.gui.Point;
 import org.pentaho.di.core.logging.KettleLogStore;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.trans.Trans;
@@ -216,7 +217,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
         //
         Trans trans;
         CarteObjectEntry entry;
-        if (Const.isEmpty(id)) {
+        if (Utils.isEmpty(id)) {
             // get the first transformation that matches...
             //
             entry = getTransformationMap().getFirstCarteObjectEntry(transName);
@@ -250,6 +251,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 SlaveServerTransStatus transStatus = new SlaveServerTransStatus(transName, entry.getId(), status);
                 transStatus.setFirstLoggingLineNr(startLineNr);
                 transStatus.setLastLoggingLineNr(lastLineNr);
+                transStatus.setLogDate(trans.getLogDate());
 
                 for (int i = 0; i < trans.nrSteps(); i++) {
                     StepInterface baseStep = trans.getRunThread(i);

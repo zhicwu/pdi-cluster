@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -31,13 +31,13 @@ import com.sun.jersey.api.json.JSONConfiguration;
 import org.apache.commons.cli.*;
 import org.apache.commons.vfs2.FileObject;
 import org.pentaho.di.cluster.SlaveServer;
-import org.pentaho.di.core.Const;
 import org.pentaho.di.core.KettleClientEnvironment;
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.core.database.util.DataSourceLocator;
 import org.pentaho.di.core.logging.KettleLogStore;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.logging.LogChannelInterface;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
@@ -46,9 +46,8 @@ import org.w3c.dom.Node;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -80,14 +79,14 @@ public class Carte {
         transformationMap.setSlaveServerConfig(config);
         final JobMap jobMap = CarteSingleton.getInstance().getJobMap();
         jobMap.setSlaveServerConfig(config);
-        List<SlaveServerDetection> detections = Collections.synchronizedList(new ArrayList<SlaveServerDetection>());
+        List<SlaveServerDetection> detections = new CopyOnWriteArrayList<SlaveServerDetection>();
         SocketRepository socketRepository = CarteSingleton.getInstance().getSocketRepository();
 
         SlaveServer slaveServer = config.getSlaveServer();
 
         String hostname = slaveServer.getHostname();
         int port = WebServer.PORT;
-        if (!Const.isEmpty(slaveServer.getPort())) {
+        if (!Utils.isEmpty(slaveServer.getPort())) {
             try {
                 port = Integer.parseInt(slaveServer.getPort());
             } catch (Exception e) {
@@ -154,7 +153,7 @@ public class Carte {
         // Load from an xml file that describes the complete configuration...
         //
         SlaveServerConfig config = null;
-        if (arguments.length == 1 && !Const.isEmpty(arguments[0])) {
+        if (arguments.length == 1 && !Utils.isEmpty(arguments[0])) {
             if (cmd.hasOption('s')) {
                 throw new Carte.CarteCommandException(BaseMessages.getString(PKG, "Carte.Error.illegalStop"));
             }
@@ -169,7 +168,7 @@ public class Carte {
             }
             config.setFilename(arguments[0]);
         }
-        if (arguments.length == 2 && !Const.isEmpty(arguments[0]) && !Const.isEmpty(arguments[1])) {
+        if (arguments.length == 2 && !Utils.isEmpty(arguments[0]) && !Utils.isEmpty(arguments[1])) {
             String hostname = arguments[0];
             String port = arguments[1];
 

@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -33,6 +33,7 @@ import org.pentaho.di.core.row.RowMeta;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.ValueMetaInterface;
 import org.pentaho.di.core.row.value.ValueMetaFactory;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
@@ -215,7 +216,7 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
                 Object[] paramData = null;
 
                 StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
-                if (!Const.isEmpty(infoStream.getStepname())) {
+                if (!Utils.isEmpty(infoStream.getStepname())) {
                     param = true;
                     if (info.length >= 0 && info[0] != null) {
                         paramRowMeta = info[0];
@@ -257,13 +258,14 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
     }
 
     public String getXML() {
-        StringBuffer retval = new StringBuffer();
+        StringBuilder retval = new StringBuilder();
 
         retval.append("    "
                 + XMLHandler.addTagValue("connection", databaseMeta == null ? "" : databaseMeta.getName()));
         retval.append("    " + XMLHandler.addTagValue("sql", sql));
         retval.append("    " + XMLHandler.addTagValue("limit", rowLimit));
         StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
+        // retval.append("    " + XMLHandler.addTagValue("lookup", infoStream.getStepname()));
         retval.append("    " + XMLHandler.addTagValue("lookup",
                 inputSteps == null ? infoStream.getStepname() : inputSteps.getStepName()));
         retval.append("    " + XMLHandler.addTagValue("execute_each_row", executeEachInputRow));
@@ -302,6 +304,7 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
             rep.saveStepAttribute(id_transformation, id_step, "sql", sql);
             rep.saveStepAttribute(id_transformation, id_step, "limit", rowLimit);
             StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
+            // rep.saveStepAttribute(id_transformation, id_step, "lookup", infoStream.getStepname());
             rep.saveStepAttribute(id_transformation, id_step, "lookup",
                     inputSteps == null ? infoStream.getStepname() : inputSteps.getStepName());
             rep.saveStepAttribute(id_transformation, id_step, "execute_each_row", executeEachInputRow);
@@ -359,7 +362,7 @@ public class TableInputMeta extends BaseStepMeta implements StepMetaInterface {
 
         // See if we have an informative step...
         StreamInterface infoStream = getStepIOMeta().getInfoStreams().get(0);
-        if (!Const.isEmpty(infoStream.getStepname())) {
+        if (!Utils.isEmpty(infoStream.getStepname())) {
             boolean found = false;
             for (int i = 0; i < input.length; i++) {
                 if (infoStream.getStepname().equalsIgnoreCase(input[i])) {
