@@ -48,6 +48,7 @@ import org.pentaho.di.core.reflection.StringSearchResult;
 import org.pentaho.di.core.reflection.StringSearcher;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.util.StringUtil;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.core.xml.XMLHandler;
@@ -95,6 +96,8 @@ public class JobMeta extends AbstractMeta
      * A constant specifying the repository element type as a Job.
      */
     public static final RepositoryObjectType REPOSITORY_ELEMENT_TYPE = RepositoryObjectType.JOB;
+
+    static final int BORDER_INDENT = 20;
 
     protected String jobVersion;
 
@@ -281,20 +284,20 @@ public class JobMeta extends AbstractMeta
      * Compares two transformation on name, filename
      */
     public int compare(JobMeta j1, JobMeta j2) {
-        if (Const.isEmpty(j1.getName()) && !Const.isEmpty(j2.getName())) {
+        if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
             return -1;
         }
-        if (!Const.isEmpty(j1.getName()) && Const.isEmpty(j2.getName())) {
+        if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
             return 1;
         }
-        if (Const.isEmpty(j1.getName()) && Const.isEmpty(j2.getName()) || j1.getName().equals(j2.getName())) {
-            if (Const.isEmpty(j1.getFilename()) && !Const.isEmpty(j2.getFilename())) {
+        if (Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName()) || j1.getName().equals(j2.getName())) {
+            if (Utils.isEmpty(j1.getFilename()) && !Utils.isEmpty(j2.getFilename())) {
                 return -1;
             }
-            if (!Const.isEmpty(j1.getFilename()) && Const.isEmpty(j2.getFilename())) {
+            if (!Utils.isEmpty(j1.getFilename()) && Utils.isEmpty(j2.getFilename())) {
                 return 1;
             }
-            if (Const.isEmpty(j1.getFilename()) && Const.isEmpty(j2.getFilename())) {
+            if (Utils.isEmpty(j1.getFilename()) && Utils.isEmpty(j2.getFilename())) {
                 return 0;
             }
             return j1.getFilename().compareTo(j2.getFilename());
@@ -546,17 +549,17 @@ public class JobMeta extends AbstractMeta
             props = Props.getInstance();
         }
 
-        StringBuffer retval = new StringBuffer(500);
+        StringBuilder retval = new StringBuilder(500);
 
-        retval.append("<").append(XML_TAG).append(">").append(Const.CR);
+        retval.append(XMLHandler.openTag(XML_TAG)).append(Const.CR);
 
         retval.append("  ").append(XMLHandler.addTagValue("name", getName()));
 
-        retval.append("    ").append(XMLHandler.addTagValue("description", description));
-        retval.append("    ").append(XMLHandler.addTagValue("extended_description", extendedDescription));
-        retval.append("    ").append(XMLHandler.addTagValue("job_version", jobVersion));
+        retval.append("  ").append(XMLHandler.addTagValue("description", description));
+        retval.append("  ").append(XMLHandler.addTagValue("extended_description", extendedDescription));
+        retval.append("  ").append(XMLHandler.addTagValue("job_version", jobVersion));
         if (jobStatus >= 0) {
-            retval.append("    ").append(XMLHandler.addTagValue("job_status", jobStatus));
+            retval.append("  ").append(XMLHandler.addTagValue("job_status", jobStatus));
         }
 
         retval.append("  ").append(XMLHandler.addTagValue("directory",
@@ -569,18 +572,18 @@ public class JobMeta extends AbstractMeta
         retval.append("    ").append(XMLHandler.openTag(XML_TAG_PARAMETERS)).append(Const.CR);
         String[] parameters = listParameters();
         for (int idx = 0; idx < parameters.length; idx++) {
-            retval.append("        ").append(XMLHandler.openTag("parameter")).append(Const.CR);
-            retval.append("            ").append(XMLHandler.addTagValue("name", parameters[idx]));
+            retval.append("      ").append(XMLHandler.openTag("parameter")).append(Const.CR);
+            retval.append("        ").append(XMLHandler.addTagValue("name", parameters[idx]));
             try {
-                retval.append("            ")
+                retval.append("        ")
                         .append(XMLHandler.addTagValue("default_value", getParameterDefault(parameters[idx])));
-                retval.append("            ")
+                retval.append("        ")
                         .append(XMLHandler.addTagValue("description", getParameterDescription(parameters[idx])));
             } catch (UnknownParamException e) {
                 // skip the default value and/or description. This exception should never happen because we use listParameters()
                 // above.
             }
-            retval.append("        ").append(XMLHandler.closeTag("parameter")).append(Const.CR);
+            retval.append("      ").append(XMLHandler.closeTag("parameter")).append(Const.CR);
         }
         retval.append("    ").append(XMLHandler.closeTag(XML_TAG_PARAMETERS)).append(Const.CR);
 
@@ -602,7 +605,7 @@ public class JobMeta extends AbstractMeta
         retval.append("    ").append(XMLHandler.openTag(XML_TAG_SLAVESERVERS)).append(Const.CR);
         for (int i = 0; i < slaveServers.size(); i++) {
             SlaveServer slaveServer = slaveServers.get(i);
-            retval.append("         ").append(slaveServer.getXML()).append(Const.CR);
+            retval.append(slaveServer.getXML());
         }
         retval.append("    ").append(XMLHandler.closeTag(XML_TAG_SLAVESERVERS)).append(Const.CR);
 
@@ -615,33 +618,33 @@ public class JobMeta extends AbstractMeta
         retval.append("   ").append(XMLHandler.addTagValue("pass_batchid", batchIdPassed));
         retval.append("   ").append(XMLHandler.addTagValue("shared_objects_file", sharedObjectsFile));
 
-        retval.append("  <entries>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.openTag("entries")).append(Const.CR);
         for (int i = 0; i < nrJobEntries(); i++) {
             JobEntryCopy jge = getJobEntry(i);
             jge.getEntry().setRepository(repository);
             retval.append(jge.getXML());
         }
-        retval.append("  </entries>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.closeTag("entries")).append(Const.CR);
 
-        retval.append("  <hops>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.openTag("hops")).append(Const.CR);
         for (JobHopMeta hi : jobhops) {
             // Look at all the hops
             retval.append(hi.getXML());
         }
-        retval.append("  </hops>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.closeTag("hops")).append(Const.CR);
 
-        retval.append("  <notepads>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.openTag("notepads")).append(Const.CR);
         for (int i = 0; i < nrNotes(); i++) {
             NotePadMeta ni = getNote(i);
             retval.append(ni.getXML());
         }
-        retval.append("  </notepads>").append(Const.CR);
+        retval.append("  ").append(XMLHandler.closeTag("notepads")).append(Const.CR);
 
         // Also store the attribute groups
         //
-        retval.append(AttributesUtil.getAttributesXml(attributesMap)).append(Const.CR);
+        retval.append(AttributesUtil.getAttributesXml(attributesMap));
 
-        retval.append("</").append(XML_TAG).append(">").append(Const.CR);
+        retval.append(XMLHandler.closeTag(XML_TAG)).append(Const.CR);
 
         return retval.toString();
     }
@@ -779,7 +782,7 @@ public class JobMeta extends AbstractMeta
      * @return true, if is rep reference
      */
     public static boolean isRepReference(String fileName, String transName) {
-        return Const.isEmpty(fileName) && !Const.isEmpty(transName);
+        return Utils.isEmpty(fileName) && !Utils.isEmpty(transName);
     }
 
     /**
@@ -1893,13 +1896,13 @@ public class JobMeta extends AbstractMeta
             }
         }
 
-        if (minx > 20) {
-            minx -= 20;
+        if (minx > BORDER_INDENT && minx != Integer.MAX_VALUE) {
+            minx -= BORDER_INDENT;
         } else {
             minx = 0;
         }
-        if (miny > 20) {
-            miny -= 20;
+        if (miny > BORDER_INDENT && miny != Integer.MAX_VALUE) {
+            miny -= BORDER_INDENT;
         } else {
             miny = 0;
         }
@@ -1991,8 +1994,8 @@ public class JobMeta extends AbstractMeta
      * @return the textual representation of the job.
      */
     public String toString() {
-        if (!Const.isEmpty(filename)) {
-            if (Const.isEmpty(name)) {
+        if (!Utils.isEmpty(filename)) {
+            if (Utils.isEmpty(name)) {
                 return filename;
             } else {
                 return filename + " : " + name;
@@ -2068,7 +2071,7 @@ public class JobMeta extends AbstractMeta
         if (monitor != null) {
             monitor.subTask(BaseMessages.getString(PKG, "JobMeta.Monitor.GettingSQLStatementsForJobLogTables"));
         }
-        if (jobLogTable.getDatabaseMeta() != null && !Const.isEmpty(jobLogTable.getTableName())) {
+        if (jobLogTable.getDatabaseMeta() != null && !Utils.isEmpty(jobLogTable.getTableName())) {
             Database db = new Database(this, jobLogTable.getDatabaseMeta());
             try {
                 db.connect();
@@ -2497,7 +2500,7 @@ public class JobMeta extends AbstractMeta
             String originalPath;
             String fullname;
             String extension = "kjb";
-            if (Const.isEmpty(getFilename())) {
+            if (Utils.isEmpty(getFilename())) {
                 // Assume repository...
                 //
                 originalPath = directory.getPath();
@@ -2561,7 +2564,7 @@ public class JobMeta extends AbstractMeta
 
                 // Also remember the original filename (if any), including variables etc.
                 //
-                if (Const.isEmpty(this.getFilename())) { // Repository
+                if (Utils.isEmpty(this.getFilename())) { // Repository
                     definition.setOrigin(fullname);
                 } else {
                     definition.setOrigin(this.getFilename());

@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -22,10 +22,10 @@
 
 package org.pentaho.di.core.database.util;
 
-import org.pentaho.di.core.Const;
 import org.pentaho.di.core.database.DataSourceNamingException;
 import org.pentaho.di.core.database.DataSourceProviderInterface;
 import org.pentaho.di.core.database.Database;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.i18n.BaseMessages;
 
 import javax.naming.Context;
@@ -64,7 +64,7 @@ public class DatabaseUtil implements DataSourceProviderInterface {
      * @throws NamingException
      */
     protected static DataSource getDataSourceFromJndi(String dsName, Context ctx) throws NamingException {
-        if (Const.isEmpty(dsName)) {
+        if (Utils.isEmpty(dsName)) {
             throw new NamingException(BaseMessages.getString(PKG, "DatabaseUtil.DSNotFound", String.valueOf(dsName)));
         }
 
@@ -175,11 +175,16 @@ public class DatabaseUtil implements DataSourceProviderInterface {
      */
     @Override
     public DataSource getNamedDataSource(String datasourceName) throws DataSourceNamingException {
+        ClassLoader original = Thread.currentThread().getContextClassLoader();
         try {
+            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
             return DatabaseUtil.getDataSourceFromJndi(datasourceName, new InitialContext());
         } catch (NamingException ex) {
             throw new DataSourceNamingException(ex);
+        } finally {
+            Thread.currentThread().setContextClassLoader(original);
         }
+
     }
 
     @Override

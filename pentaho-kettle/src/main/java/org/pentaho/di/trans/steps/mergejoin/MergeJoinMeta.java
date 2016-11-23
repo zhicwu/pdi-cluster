@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -29,8 +29,11 @@ import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleStepException;
 import org.pentaho.di.core.exception.KettleXMLException;
+import org.pentaho.di.core.injection.Injection;
+import org.pentaho.di.core.injection.InjectionSupported;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.ValueMetaInterface;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
@@ -54,7 +57,7 @@ import java.util.List;
  * @author Biswapesh
  * @since 24-nov-2006
  */
-
+@InjectionSupported(localizationPrefix = "MergeJoin.Injection.")
 public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
     private static Class<?> PKG = MergeJoinMeta.class; // for i18n purposes, needed by Translator2!!
 
@@ -62,9 +65,12 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
     public static final boolean[] one_optionals = {false, false, true, true};
     public static final boolean[] two_optionals = {false, true, false, true};
 
+    @Injection(name = "JOIN_TYPE")
     private String joinType;
 
+    @Injection(name = "KEY_FIELD1")
     private String[] keyFields1;
+    @Injection(name = "KEY_FIELD2")
     private String[] keyFields2;
 
     private StreamingSteps inputSteps;
@@ -140,15 +146,25 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
         System.arraycopy(keyFields1, 0, retval.keyFields1, 0, nrKeys1);
         System.arraycopy(keyFields2, 0, retval.keyFields2, 0, nrKeys2);
 
+        StepIOMetaInterface stepIOMeta = new StepIOMeta(true, true, false, false, false, false);
+        List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
+
+        for (StreamInterface infoStream : infoStreams) {
+            stepIOMeta.addStream(new Stream(infoStream));
+        }
+        retval.ioMeta = stepIOMeta;
+
         return retval;
     }
 
     public String getXML() {
-        StringBuffer retval = new StringBuffer();
+        StringBuilder retval = new StringBuilder();
 
         List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
 
         retval.append(XMLHandler.addTagValue("join_type", getJoinType()));
+        // retval.append(XMLHandler.addTagValue("step1", infoStreams.get(0).getStepname()));
+        // retval.append(XMLHandler.addTagValue("step2", infoStreams.get(1).getStepname()));
         retval.append(XMLHandler.addTagValue("step1",
                 inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName()));
         retval.append(XMLHandler.addTagValue("step2",
@@ -252,6 +268,8 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
 
             List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
 
+            // rep.saveStepAttribute(id_transformation, id_step, "step1", infoStreams.get(0).getStepname());
+            // rep.saveStepAttribute(id_transformation, id_step, "step2", infoStreams.get(1).getStepname());
             rep.saveStepAttribute(id_transformation, id_step, "step1",
                     inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName());
             rep.saveStepAttribute(id_transformation, id_step, "step2",
@@ -291,7 +309,7 @@ public class MergeJoinMeta extends BaseStepMeta implements StepMetaInterface {
 
         for (int i = 0; i < r.size(); i++) {
             ValueMetaInterface vmi = r.getValueMeta(i);
-            if (vmi != null && Const.isEmpty(vmi.getName())) {
+            if (vmi != null && Utils.isEmpty(vmi.getName())) {
                 vmi.setOrigin(name);
             }
         }

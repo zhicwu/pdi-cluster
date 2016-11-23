@@ -28,6 +28,8 @@ import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleStepException;
 import org.pentaho.di.core.exception.KettleXMLException;
+import org.pentaho.di.core.injection.Injection;
+import org.pentaho.di.core.injection.InjectionSupported;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.xml.XMLHandler;
@@ -52,10 +54,16 @@ import java.util.List;
  * @author Sven Boden
  * @since 3-june-2007
  */
+@InjectionSupported(localizationPrefix = "AppendMeta.Injection.")
 public class AppendMeta extends BaseStepMeta implements StepMetaInterface {
     private static Class<?> PKG = Append.class; // for i18n purposes, needed by Translator2!!
 
     private StreamingSteps inputSteps;
+
+    @Injection(name = "HEAD_STEP")
+    public String headStepname;
+    @Injection(name = "TAIL_STEP")
+    public String tailStepname;
 
     public AppendMeta() {
         super(); // allocate BaseStepMeta
@@ -75,6 +83,8 @@ public class AppendMeta extends BaseStepMeta implements StepMetaInterface {
         StringBuilder retval = new StringBuilder();
 
         List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
+        // retval.append(XMLHandler.addTagValue("head_name", infoStreams.get(0).getStepname()));
+        // retval.append(XMLHandler.addTagValue("tail_name", infoStreams.get(1).getStepname()));
         retval.append(XMLHandler.addTagValue("head_name",
                 inputSteps == null ? infoStreams.get(0).getStepname() : inputSteps.getStepName()));
         retval.append(XMLHandler.addTagValue("tail_name",
@@ -118,6 +128,8 @@ public class AppendMeta extends BaseStepMeta implements StepMetaInterface {
             List<StreamInterface> infoStreams = getStepIOMeta().getInfoStreams();
             StreamInterface headStream = infoStreams.get(0);
             StreamInterface tailStream = infoStreams.get(1);
+            // rep.saveStepAttribute(id_transformation, id_step, "head_name", headStream.getStepname());
+            // rep.saveStepAttribute(id_transformation, id_step, "tail_name", tailStream.getStepname());
             rep.saveStepAttribute(id_transformation, id_step, "head_name",
                     inputSteps == null ? headStream.getStepname() : inputSteps.getStepName());
             rep.saveStepAttribute(id_transformation, id_step, "tail_name",
