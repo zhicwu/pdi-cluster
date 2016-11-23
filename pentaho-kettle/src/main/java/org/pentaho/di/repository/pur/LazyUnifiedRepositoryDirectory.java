@@ -159,21 +159,23 @@ public class LazyUnifiedRepositoryDirectory extends RepositoryDirectory {
 
                 for (RepositoryFileTree tchild : tree.getChildren()) {
                     RepositoryFile child = tchild.getFile();
+                    if (!child.isFolder()) {
 
-                    RepositoryLock lock = null;
-                    try {
-                        // No idea why introducing the unnecessary dependency and NPE here...
-                        lock = lockService == null ? null : lockService.getLock(child);
-                        RepositoryObjectType objectType = getObjectType(child.getName());
-                        EERepositoryObject repositoryObject =
-                                new EERepositoryObject(child, this, null, objectType, null, lock, false);
+                        RepositoryLock lock = null;
+                        try {
+                            // No idea why introducing the unnecessary dependency and NPE here...
+                            lock = lockService == null ? null : lockService.getLock(child);
+                            RepositoryObjectType objectType = getObjectType(child.getName());
+                            EERepositoryObject repositoryObject =
+                                    new EERepositoryObject(child, this, null, objectType, null, lock, false);
 
-                        repositoryObject.setVersioningEnabled(tchild.getVersioningEnabled());
-                        repositoryObject.setVersionCommentEnabled(tchild.getVersionCommentEnabled());
-                        fileChildren.add(repositoryObject);
-                    } catch (KettleException e) {
-                        logger.error("Error converting Unified Repository file to PDI RepositoryObject: " + child.getPath()
-                                + ". File will be skipped", e);
+                            repositoryObject.setVersioningEnabled(tchild.getVersioningEnabled());
+                            repositoryObject.setVersionCommentEnabled(tchild.getVersionCommentEnabled());
+                            fileChildren.add(repositoryObject);
+                        } catch (KettleException e) {
+                            logger.error("Error converting Unified Repository file to PDI RepositoryObject: " + child.getPath()
+                                    + ". File will be skipped", e);
+                        }
                     }
                 }
             }

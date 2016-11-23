@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -28,6 +28,7 @@ import org.pentaho.di.compatibility.Value;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.*;
 import org.pentaho.di.core.row.value.ValueMetaFactory;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.w3c.dom.Node;
 
@@ -269,8 +270,17 @@ public class RowMeta implements RowMetaInterface {
             lock.writeLock().lock();
             try {
                 ValueMetaInterface old = valueMetaList.get(index);
-                valueMetaList.set(index, valueMeta);
-                cache.replaceMapping(old.getName(), valueMeta.getName(), index);
+                ValueMetaInterface newMeta = valueMeta;
+
+                // try to check if a ValueMeta with the same name already exists
+                int existsIndex = indexOfValue(valueMeta.getName());
+                // if it exists and it's not in the requested position
+                // we need to take care of renaming
+                if (existsIndex >= 0 && existsIndex != index) {
+                    newMeta = renameValueMetaIfInRow(valueMeta, null);
+                }
+                valueMetaList.set(index, newMeta);
+                cache.replaceMapping(old.getName(), newMeta.getName(), index);
             } finally {
                 lock.writeLock().unlock();
             }
@@ -1235,7 +1245,7 @@ public class RowMeta implements RowMetaInterface {
         }
 
         void storeMapping(String name, int index) {
-            if (Const.isEmpty(name)) {
+            if (Utils.isEmpty(name)) {
                 return;
             }
 
@@ -1246,14 +1256,14 @@ public class RowMeta implements RowMetaInterface {
         }
 
         synchronized void replaceMapping(String old, String current, int index) {
-            if (!Const.isEmpty(old)) {
+            if (!Utils.isEmpty(old)) {
                 mapping.remove(old.toLowerCase());
             }
             storeMapping(current, index);
         }
 
         Integer findAndCompare(String name, List<? extends ValueMetaInterface> metas) {
-            if (Const.isEmpty(name)) {
+            if (Utils.isEmpty(name)) {
                 return null;
             }
 

@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -51,6 +51,7 @@ import org.pentaho.di.core.logging.LogChannelInterface;
 import org.pentaho.di.core.plugins.CartePluginType;
 import org.pentaho.di.core.plugins.PluginInterface;
 import org.pentaho.di.core.plugins.PluginRegistry;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.i18n.BaseMessages;
 
 import javax.servlet.Servlet;
@@ -58,6 +59,8 @@ import java.io.File;
 import java.util.*;
 
 public class WebServer {
+
+    private static final int DEFAULT_DETECTION_TIMER = 20000;
     private static Class<?> PKG = WebServer.class; // for i18n purposes, needed by Translator2!!
 
     private LogChannelInterface log;
@@ -158,13 +161,13 @@ public class WebServer {
             roles.add("default");
             HashLoginService hashLoginService;
             SlaveServer slaveServer = transformationMap.getSlaveServerConfig().getSlaveServer();
-            if (!Const.isEmpty(slaveServer.getPassword())) {
+            if (!Utils.isEmpty(slaveServer.getPassword())) {
                 hashLoginService = new HashLoginService("Kettle");
                 hashLoginService.putUser(slaveServer.getUsername(), new Password(slaveServer.getPassword()),
                         new String[]{"default"});
             } else {
                 // See if there is a kettle.pwd file in the KETTLE_HOME directory:
-                if (Const.isEmpty(passwordFile)) {
+                if (Utils.isEmpty(passwordFile)) {
                     File homePwdFile = new File(Const.getKettleCartePasswordFile());
                     if (homePwdFile.exists()) {
                         passwordFile = Const.getKettleCartePasswordFile();
@@ -432,7 +435,8 @@ public class WebServer {
                 }
             }
         };
-        slaveMonitoringTimer.schedule(timerTask, 20000, 20000);
+        int detectionTime = defaultDetectionTimer();
+        slaveMonitoringTimer.schedule(timerTask, detectionTime, detectionTime);
     }
 
     /**
@@ -514,4 +518,13 @@ public class WebServer {
         this.webServerShutdownHandler = webServerShutdownHandler;
     }
 
+    public int defaultDetectionTimer() {
+        String sDetectionTimer = System.getProperty(Const.KETTLE_SLAVE_DETECTION_TIMER);
+
+        if (sDetectionTimer != null) {
+            return Integer.parseInt(sDetectionTimer);
+        } else {
+            return DEFAULT_DETECTION_TIMER;
+        }
+    }
 }

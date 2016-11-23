@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2013 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -29,6 +29,7 @@ import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.gui.Point;
 import org.pentaho.di.core.logging.KettleLogStore;
+import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.Job;
@@ -201,7 +202,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
         //
         Job job;
         CarteObjectEntry entry;
-        if (Const.isEmpty(id)) {
+        if (Utils.isEmpty(id)) {
             // get the first job that matches...
             //
             entry = getJobMap().getFirstCarteObjectEntry(jobName);
@@ -214,7 +215,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
         } else {
             // Actually, just providing the ID should be enough to identify the job
             //
-            if (Const.isEmpty(jobName)) {
+            if (Utils.isEmpty(jobName)) {
                 // Take the ID into account!
                 //
                 job = getJobMap().findJob(id);
@@ -244,6 +245,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                 SlaveServerJobStatus jobStatus = new SlaveServerJobStatus(jobName, id, status);
                 jobStatus.setFirstLoggingLineNr(startLineNr);
                 jobStatus.setLastLoggingLineNr(lastLineNr);
+                jobStatus.setLogDate(job.getLogDate());
 
                 // The log can be quite large at times, we are going to put a base64 encoding around a compressed stream
                 // of bytes to handle this one.
