@@ -69,6 +69,11 @@ import java.util.zip.ZipOutputStream;
 public class Mail extends BaseStep implements StepInterface {
     private static Class<?> PKG = MailMeta.class; // for i18n purposes, needed by Translator2!!
 
+    private final static String KETTLE_MAIL_CONNECTION_TIMEOUT
+            = System.getProperty("KETTLE_MAIL_CONNECTION_TIMEOUT", "10000"); // 10 seconds
+    private final static String KETTLE_MAIL_READ_TIMEOUT
+            = System.getProperty("KETTLE_MAIL_READ_TIMEOUT", "30000"); // 30 seconds
+
     private MailMeta meta;
     private MailData data;
 
@@ -521,6 +526,7 @@ public class Mail extends BaseStep implements StepInterface {
         // create some properties and get the default Session
 
         String protocol = "smtp";
+
         if (meta.isUsingSecureAuthentication()) { // PDI-2955
             // if (meta.isUsingAuthentication()) {
             if (meta.getSecureConnectionType().equals("TLS")) {
@@ -534,6 +540,12 @@ public class Mail extends BaseStep implements StepInterface {
                 data.props.put("mail.smtps.quitwait", "false");
             }
         }
+
+        // set timeout according to:
+        // https://javamail.java.net/nonav/docs/api/com/sun/mail/smtp/package-summary.html
+        data.props.put("mail." + protocol + ".connectiontimeout", KETTLE_MAIL_CONNECTION_TIMEOUT);
+        data.props.put("mail." + protocol + ".timeout", KETTLE_MAIL_READ_TIMEOUT);
+
         data.props.put("mail." + protocol + ".host", server);
         if (port != -1) {
             data.props.put("mail." + protocol + ".port", "" + port); // needs to be supplied as a string, not as an integer
