@@ -1481,7 +1481,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
      * @param var the new internal kettle variables.
      */
     public void setInternalKettleVariables(VariableSpace var) {
-        if (jobMeta != null && jobMeta.getFilename() != null) { // we have a finename that's defined.
+        if (jobMeta != null && jobMeta.getFilename() != null) { // we have a filename that's defined.
             try {
                 FileObject fileObject = KettleVFS.getFileObject(jobMeta.getFilename(), this);
                 FileName fileName = fileObject.getName();
