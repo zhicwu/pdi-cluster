@@ -15,11 +15,14 @@
  ******************************************************************************/
 package org.pentaho.di.resource;
 
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleFileException;
+import org.pentaho.di.core.logging.LogChannelInterface;
 import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
@@ -28,6 +31,8 @@ import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.trans.TransMeta;
 
+import java.io.InputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +51,52 @@ public final class ResourceDefinitionHelper {
 
     private final static String VARIABLE_PREFIX = "${";
     private final static String VARIABLE_SUFFIX = "}";
+
+    private final static String CLASS_SIMPLE_REPOSITORY_FILE_DATA
+            = "org.pentaho.platform.api.repository2.unified.data.simple.SimpleRepositoryFileData";
+    private final static String METHOD_GET_DATA = "getDataForRead";
+    private final static String METHOD_GET_ENCODING = "getEncoding";
+    private final static String METHOD_GET_FILE = "getFile";
+    private final static String METHOD_GET_ID = "getId";
+    private final static String METHOD_GET_INPUTSTREAM = "getInputStream";
+    private final static String METHOD_GET_NAME = "getName";
+    private final static String METHOD_GET_PUR = "getPur";
+
+    private final static String WARN_FAILED_TO_LOAD_FILE = "Failed to get file content from Pentaho Repository: ";
+
+    public static class SimpleFileMeta {
+        private final String fileName;
+        private final boolean isText;
+        private final String textContent;
+        private final byte[] binaryContent;
+
+        public SimpleFileMeta(String fileName, boolean isText, String textContent, byte[] binaryContent) {
+            this.fileName = fileName;
+            this.isText = isText;
+            this.textContent = textContent;
+            this.binaryContent = binaryContent;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public boolean isText() {
+            return isText;
+        }
+
+        public boolean isBinary() {
+            return !isText;
+        }
+
+        public String getTextContent() {
+            return textContent;
+        }
+
+        public byte[] getBinaryContent() {
+            return binaryContent;
+        }
+    }
 
     public static class TransMetaCollection extends TransMeta {
         private final List<TransMeta> attachedMeta = new ArrayList<>();
@@ -181,6 +232,83 @@ public final class ResourceDefinitionHelper {
         }
 
         return jobMeta;
+    }
+
+    /**
+     * Try to get content of given file(text or binary) from Pentaho Repository.
+     *
+     * @param repository repository instance
+     * @param fileName   substituted file name
+     * @param isTextFile true if it's a text file; false otherwise
+     * @param logger     logger interface
+     * @return an object contains name, type and content of the file
+     */
+    public static SimpleFileMeta loadFileFromPurRepository(Repository repository,
+                                                           String fileName,
+                                                           boolean isTextFile,
+                                                           LogChannelInterface logger) {
+        String simpleName = FilenameUtils.normalize(fileName);
+        String textContent = "";
+        byte[] binaryContent = new byte[0];
+
+        InputStream is = null;
+        try {
+            Class repositoryClass = repository.getClass();
+            Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
+
+            Class unifiedRepositoryClass = unifiedRepository.getClass();
+            Object repositoryFile = unifiedRepositoryClass.getMethod(METHOD_GET_FILE, String.class)
+                    .invoke(unifiedRepository, simpleName);
+
+            Class repositoryFileClass = repositoryFile.getClass();
+            Object fileId = repositoryFileClass.getMethod(METHOD_GET_ID).invoke(repositoryFile);
+
+            simpleName = (String) repositoryFileClass.getMethod(METHOD_GET_NAME).invoke(repositoryFile);
+
+            Object fileData = unifiedRepositoryClass.getMethod(METHOD_GET_DATA, Serializable.class, Class.class)
+                    .invoke(unifiedRepository, fileId,
+                            unifiedRepositoryClass.getClassLoader().loadClass(CLASS_SIMPLE_REPOSITORY_FILE_DATA));
+            Class fileDataClass = fileData.getClass();
+            is = (InputStream) fileDataClass.getMethod(METHOD_GET_INPUTSTREAM).invoke(fileData);
+
+            if (isTextFile) {
+                String encoding = null;
+                // just try to get file encoding if we could
+                try {
+                    encoding = (String) repositoryFileClass.getMethod(METHOD_GET_ENCODING).invoke(repositoryFile);
+                } catch (Exception ex) {
+                }
+
+                textContent = IOUtils.toString(is, encoding);
+            } else {
+                // FIXME this could be a problem, let's hope the binary file is not that large...
+                binaryContent = IOUtils.toByteArray(is);
+            }
+        } catch (NoSuchMethodException | SecurityException e) {
+            if (logger != null) {
+                logger.logDebug(WARN_FAILED_TO_LOAD_FILE + fileName, e);
+            }
+        } catch (Exception e) {
+            if (logger != null) {
+                logger.logError(WARN_FAILED_TO_LOAD_FILE + fileName, e);
+            }
+        } finally {
+            IOUtils.closeQuietly(is);
+        }
+
+        return new SimpleFileMeta(simpleName, isTextFile, textContent, binaryContent);
+    }
+
+    /**
+     * Try to get content of given text file from Pentaho Repository.
+     *
+     * @param repository repository instance
+     * @param fileName   substituted file name
+     * @param logger     logger interface
+     * @return text file content
+     */
+    public static String getTextFileContent(Repository repository, String fileName, LogChannelInterface logger) {
+        return loadFileFromPurRepository(repository, fileName, true, logger).getTextContent();
     }
 
     private ResourceDefinitionHelper() {
