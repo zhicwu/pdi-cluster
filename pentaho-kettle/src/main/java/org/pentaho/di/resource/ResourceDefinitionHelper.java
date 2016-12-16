@@ -197,6 +197,26 @@ public final class ResourceDefinitionHelper {
         return definitions.containsKey(fullname) || meta.equals(space);
     }
 
+    private static void loadTransformationRecursively(
+            Repository rep, TransMetaCollection tmc, RepositoryDirectoryInterface dir) throws KettleException {
+        if (rep == null || tmc == null || dir == null) {
+            return;
+        }
+
+        for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
+            if (element.getObjectType() != RepositoryObjectType.TRANSFORMATION) {
+                continue;
+            }
+
+            tmc.attachTransMeta(rep.loadTransformation(element.getName(), dir, null, true, null));
+        }
+
+        // now sub-directories
+        for (RepositoryDirectoryInterface d : dir.getChildren()) {
+            loadTransformationRecursively(rep, tmc, d);
+        }
+    }
+
     public static TransMeta loadTransformation(
             Repository rep, RepositoryDirectoryInterface dir, String realFileName) throws KettleException {
         TransMeta transMeta = null;
@@ -209,18 +229,33 @@ public final class ResourceDefinitionHelper {
             TransMetaCollection tmc = new TransMetaCollection();
             transMeta = tmc;
             transMeta.setFilename(realFileName);
-            for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
-                if (element.getObjectType() != RepositoryObjectType.TRANSFORMATION) {
-                    continue;
-                }
 
-                tmc.attachTransMeta(rep.loadTransformation(element.getName(), dir, null, true, null));
-            }
+            loadTransformationRecursively(rep, tmc, dir);
         } else {
             transMeta = rep.loadTransformation(realFileName, dir, null, true, null);
         }
 
         return transMeta;
+    }
+
+    private static void loadJobRecursively(
+            Repository rep, JobMetaCollection jmc, RepositoryDirectoryInterface dir) throws KettleException {
+        if (rep == null || jmc == null || dir == null) {
+            return;
+        }
+
+        for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
+            if (element.getObjectType() != RepositoryObjectType.JOB) {
+                continue;
+            }
+
+            jmc.attachJobMeta(rep.loadJob(element.getName(), dir, null, null));
+        }
+
+        // now sub-directories
+        for (RepositoryDirectoryInterface d : dir.getChildren()) {
+            loadJobRecursively(rep, jmc, d);
+        }
     }
 
     public static JobMeta loadJob(
@@ -235,13 +270,8 @@ public final class ResourceDefinitionHelper {
             JobMetaCollection jmc = new JobMetaCollection();
             jobMeta = jmc;
             jobMeta.setFilename(realFileName);
-            for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
-                if (element.getObjectType() != RepositoryObjectType.JOB) {
-                    continue;
-                }
 
-                jmc.attachJobMeta(rep.loadJob(element.getName(), dir, null, null));
-            }
+            loadJobRecursively(rep, jmc, dir);
         } else {
             jobMeta = rep.loadJob(realFileName, dir, null, null);
         }
