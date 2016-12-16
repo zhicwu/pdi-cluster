@@ -117,7 +117,8 @@ public class ResourceUtil {
                     zipEntry.setComment(comment);
                     out.putNextEntry(zipEntry);
 
-                    out.write(resourceDefinition.getContent().getBytes());
+                    // out.write(resourceDefinition.getContent().getBytes());
+                    out.write(resourceDefinition.getBinaryContent());
                     out.closeEntry();
                 }
                 String zipURL = fileObject.getName().toString();

@@ -15,6 +15,7 @@
  ******************************************************************************/
 package org.pentaho.di.resource;
 
+import com.google.common.base.Strings;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -31,6 +32,7 @@ import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.trans.TransMeta;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -62,6 +64,8 @@ public final class ResourceDefinitionHelper {
     private final static String METHOD_GET_NAME = "getName";
     private final static String METHOD_GET_PUR = "getPur";
 
+    private final static String FS_PROTOCOL = "file://";
+
     private final static String WARN_FAILED_TO_LOAD_FILE = "Failed to get file content from Pentaho Repository: ";
 
     public static class SimpleFileMeta {
@@ -69,12 +73,15 @@ public final class ResourceDefinitionHelper {
         private final boolean isText;
         private final String textContent;
         private final byte[] binaryContent;
+        private final boolean available;
 
-        public SimpleFileMeta(String fileName, boolean isText, String textContent, byte[] binaryContent) {
+        public SimpleFileMeta(String fileName, boolean isText,
+                              String textContent, byte[] binaryContent, boolean available) {
             this.fileName = fileName;
             this.isText = isText;
             this.textContent = textContent;
             this.binaryContent = binaryContent;
+            this.available = available;
         }
 
         public String getFileName() {
@@ -95,6 +102,14 @@ public final class ResourceDefinitionHelper {
 
         public byte[] getBinaryContent() {
             return binaryContent;
+        }
+
+        public InputStream getBinaryInputStream() {
+            return new ByteArrayInputStream(binaryContent);
+        }
+
+        public boolean isAvailable() {
+            return available;
         }
     }
 
@@ -252,6 +267,7 @@ public final class ResourceDefinitionHelper {
         byte[] binaryContent = new byte[0];
 
         InputStream is = null;
+        boolean success = false;
         try {
             Class repositoryClass = repository.getClass();
             Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
@@ -284,6 +300,8 @@ public final class ResourceDefinitionHelper {
                 // FIXME this could be a problem, let's hope the binary file is not that large...
                 binaryContent = IOUtils.toByteArray(is);
             }
+
+            success = true;
         } catch (NoSuchMethodException | SecurityException e) {
             if (logger != null) {
                 logger.logDebug(WARN_FAILED_TO_LOAD_FILE + fileName, e);
@@ -296,7 +314,7 @@ public final class ResourceDefinitionHelper {
             IOUtils.closeQuietly(is);
         }
 
-        return new SimpleFileMeta(simpleName, isTextFile, textContent, binaryContent);
+        return new SimpleFileMeta(simpleName, isTextFile, textContent, binaryContent, success);
     }
 
     /**
@@ -309,6 +327,62 @@ public final class ResourceDefinitionHelper {
      */
     public static String getTextFileContent(Repository repository, String fileName, LogChannelInterface logger) {
         return loadFileFromPurRepository(repository, fileName, true, logger).getTextContent();
+    }
+
+    public static String normalizeFileName(String fileName, VariableSpace space) {
+        if (space != null) {
+            fileName = space.environmentSubstitute(fileName);
+        }
+
+        return normalizeFileName(fileName);
+    }
+
+    public static String normalizeFileName(String fileName) {
+        String normalizedFileName = FilenameUtils.normalize(fileName);
+        if (!Strings.isNullOrEmpty(normalizedFileName)) {
+            fileName = normalizedFileName;
+        }
+
+        return fileName;
+    }
+
+    public static String extractFileName(String fileName) {
+        return FilenameUtils.getName(fileName);
+    }
+
+    public static String extractExtension(String fileName) {
+        return extractExtension(fileName, false);
+    }
+
+    public static String extractExtension(String fileName, boolean withDot) {
+        StringBuilder sb = new StringBuilder(10);
+        if (withDot) {
+            sb.append('.');
+        }
+
+        if (fileName != null) {
+            sb.append(FilenameUtils.getExtension(fileName));
+        }
+
+        return sb.toString();
+    }
+
+    public static String normalizeJobResourceName(String resourceName) {
+        return resourceName.replace(FS_PROTOCOL,
+                new StringBuilder(20)
+                        .append(VARIABLE_PREFIX)
+                        .append(Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY)
+                        .append(VARIABLE_SUFFIX)
+                        .toString());
+    }
+
+    public static String normalizeTransformationResourceName(String resourceName) {
+        return resourceName.replace(FS_PROTOCOL,
+                new StringBuilder(20)
+                        .append(VARIABLE_PREFIX)
+                        .append(Const.INTERNAL_VARIABLE_TRANSFORMATION_FILENAME_DIRECTORY)
+                        .append(VARIABLE_SUFFIX)
+                        .toString());
     }
 
     private ResourceDefinitionHelper() {

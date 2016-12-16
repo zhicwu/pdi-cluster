@@ -58,10 +58,7 @@ import org.pentaho.di.job.entries.special.JobEntrySpecial;
 import org.pentaho.di.job.entry.JobEntryCopy;
 import org.pentaho.di.job.entry.JobEntryInterface;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceExportInterface;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.shared.SharedObjectInterface;
 import org.pentaho.di.shared.SharedObjects;
 import org.pentaho.metastore.api.IMetaStore;
@@ -2549,7 +2546,9 @@ public class JobMeta extends AbstractMeta
                 if (directoryMap != null) {
                     for (String directory : directoryMap.keySet()) {
                         String parameterName = directoryMap.get(directory);
-                        jobMeta.addParameterDefinition(parameterName, directory, "Data file path discovered during export");
+                        jobMeta.addParameterDefinition(parameterName,
+                                ResourceDefinitionHelper.normalizeJobResourceName(directory),
+                                "Data file path discovered during export");
                     }
                 }
 

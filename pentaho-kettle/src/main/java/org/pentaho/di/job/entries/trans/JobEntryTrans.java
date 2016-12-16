@@ -1186,7 +1186,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                 case FILENAME:
                     String realFilename = tmpSpace.environmentSubstitute(getFilename());
                     if (rep != null) {
-                        realFilename = r.normalizeSlashes(realFilename);
+                        realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
+
                         // need to try to load from the repository
                         try {
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));

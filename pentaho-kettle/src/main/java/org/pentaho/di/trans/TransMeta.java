@@ -54,10 +54,7 @@ import org.pentaho.di.core.xml.XMLInterface;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.partition.PartitionSchema;
 import org.pentaho.di.repository.*;
-import org.pentaho.di.resource.ResourceDefinition;
-import org.pentaho.di.resource.ResourceExportInterface;
-import org.pentaho.di.resource.ResourceNamingInterface;
-import org.pentaho.di.resource.ResourceReference;
+import org.pentaho.di.resource.*;
 import org.pentaho.di.shared.SharedObjectInterface;
 import org.pentaho.di.shared.SharedObjects;
 import org.pentaho.di.trans.step.*;
@@ -5553,7 +5550,9 @@ public class TransMeta extends AbstractMeta
                 if (directoryMap != null) {
                     for (String directory : directoryMap.keySet()) {
                         String parameterName = directoryMap.get(directory);
-                        transMeta.addParameterDefinition(parameterName, directory, "Data file path discovered during export");
+                        transMeta.addParameterDefinition(parameterName,
+                                ResourceDefinitionHelper.normalizeTransformationResourceName(directory),
+                                "Data file path discovered during export");
                     }
                 }
 
