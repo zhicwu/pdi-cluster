@@ -1198,7 +1198,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     String realFilename = tmpSpace.environmentSubstitute(getFilename());
                     if (rep != null) {
                         // need to try to load from the repository
-                        realFilename = r.normalizeSlashes(realFilename);
+                        realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
                         try {
                             String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
                             String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);

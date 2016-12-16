@@ -98,6 +98,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
      */
     private static Class<?> PKG = Trans.class; // for i18n purposes, needed by Translator2!!
 
+    private static final boolean KETTLE_TRANS_PREVIEW_DISABLED
+            = "Y".equalsIgnoreCase(System.getProperty("KETTLE_TRANS_PREVIEW_DISABLED", "Y"));
+
     /**
      * The replay date format.
      */
@@ -1181,7 +1184,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             // Pass along the log during preview. Otherwise it becomes hard to see
             // what went wrong.
             //
-            if (preview) {
+            if (isPreview()) {
                 String logText = KettleLogStore.getAppender().getBuffer(getLogChannelId(), true).toString();
                 throw new KettleException(BaseMessages.getString(PKG, "Trans.Log.FailToInitializeAtLeastOneStep") + Const.CR
                         + logText);
@@ -4455,7 +4458,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
      * @return true if the transformation is being previewed, false otherwise
      */
     public boolean isPreview() {
-        return preview;
+        return !KETTLE_TRANS_PREVIEW_DISABLED && preview;
     }
 
     /**
