@@ -660,19 +660,14 @@ public class ExcelWriterStep extends BaseStep implements StepInterface {
             data.clearStyleCache(numOfFields);
 
             // build new filename
-            String tmpDir = System.getProperty("java.io.tmpdir");
             String buildFilename = buildFilename(data.splitnr);
 
             ResourceDefinitionHelper.SimpleFileMeta fileMeta = meta.isTemplateEnabled()
                     ? ResourceDefinitionHelper.loadFileFromPurRepository(getRepository(), data.realTemplateFileName, false, getLogChannel())
                     : new ResourceDefinitionHelper.SimpleFileMeta(data.realTemplateFileName, false, null, null, false);
-            if (fileMeta.isAvailable()) {
-                data.file = KettleVFS.createTempFile("template",
-                        ResourceDefinitionHelper.extractExtension(data.realTemplateFileName, true), tmpDir);
-            } else {
-                buildFilename = ResourceDefinitionHelper.generateNewFileNameForWrite(buildFilename, tmpDir);
-                data.file = KettleVFS.getFileObject(buildFilename, getTransMeta());
-            }
+
+            buildFilename = ResourceDefinitionHelper.generateNewFileNameForOutput(buildFilename, fileMeta.isAvailable());
+            data.file = KettleVFS.getFileObject(buildFilename, getTransMeta());
 
             if (log.isDebug()) {
                 logDebug(BaseMessages.getString(PKG, "ExcelWriterStep.Log.OpeningFile", buildFilename));

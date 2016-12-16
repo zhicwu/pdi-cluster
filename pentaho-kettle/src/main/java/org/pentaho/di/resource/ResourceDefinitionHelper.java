@@ -386,12 +386,20 @@ public final class ResourceDefinitionHelper {
                         .toString());
     }
 
-    public static String generateNewFileNameForWrite(String fileName, String tmpDir) {
-        int index = fileName == null ? 0 : fileName.indexOf('!');
+    public static String generateNewFileNameForOutput(String fileName, boolean fromPur) {
+        if (fileName == null) {
+            return fileName;
+        }
+
+        if (fromPur) {
+            fileName = extractFileName(fileName, false);
+        }
+
+        String slash = "/";
+        int index = fileName.indexOf('!');
 
         if (index > 0) {
             // remove duplicated '/'
-            String slash = "/";
             String pattern = slash + "+";
 
             fileName = fileName.substring(index + 1).replaceAll(pattern, slash);
@@ -399,9 +407,11 @@ public final class ResourceDefinitionHelper {
                 fileName = fileName.substring(1);
             }
 
-            if (tmpDir == null) {
-                tmpDir = FilenameUtils.normalize(System.getProperty("java.io.tmpdir")).replace('\\', '/');
-            }
+            fromPur = true;
+        }
+
+        if (fromPur) {
+            String tmpDir = FilenameUtils.normalize(System.getProperty("java.io.tmpdir")).replace('\\', '/');
 
             StringBuilder sb = new StringBuilder();
             sb.append(tmpDir);
