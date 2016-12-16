@@ -22,7 +22,6 @@
 
 package org.pentaho.di.trans.steps.excelwriter;
 
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -663,8 +662,6 @@ public class ExcelWriterStep extends BaseStep implements StepInterface {
             // build new filename
             String tmpDir = System.getProperty("java.io.tmpdir");
             String buildFilename = buildFilename(data.splitnr);
-            int index = buildFilename.indexOf('!');
-            buildFilename = index > 0 ? FilenameUtils.concat(tmpDir, buildFilename.substring(index + 1)) : buildFilename;
 
             ResourceDefinitionHelper.SimpleFileMeta fileMeta = meta.isTemplateEnabled()
                     ? ResourceDefinitionHelper.loadFileFromPurRepository(getRepository(), data.realTemplateFileName, false, getLogChannel())
@@ -673,6 +670,7 @@ public class ExcelWriterStep extends BaseStep implements StepInterface {
                 data.file = KettleVFS.createTempFile("template",
                         ResourceDefinitionHelper.extractExtension(data.realTemplateFileName, true), tmpDir);
             } else {
+                buildFilename = ResourceDefinitionHelper.generateNewFileNameForWrite(buildFilename, tmpDir);
                 data.file = KettleVFS.getFileObject(buildFilename, getTransMeta());
             }
 

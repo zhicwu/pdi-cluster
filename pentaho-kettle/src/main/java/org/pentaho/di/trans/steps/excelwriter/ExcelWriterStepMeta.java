@@ -1077,9 +1077,11 @@ public class ExcelWriterStepMeta extends BaseStepMeta implements StepMetaInterfa
             // So let's change the filename from relative to absolute by grabbing the file object...
             //
             if (!Const.isEmpty(fileName)) {
-                FileObject fileObject = KettleVFS.getFileObject(space.environmentSubstitute(fileName), space);
+                FileObject fileObject = KettleVFS.getFileObject(
+                        ResourceDefinitionHelper.extractFileName(space.environmentSubstitute(fileName), true), space);
                 fileName = resourceNamingInterface.nameResource(fileObject, space, true);
             }
+
             if (!Const.isEmpty(templateFileName)) {
                 String realFileName = ResourceDefinitionHelper.normalizeFileName(templateFileName, space);
 
@@ -1088,9 +1090,8 @@ public class ExcelWriterStepMeta extends BaseStepMeta implements StepMetaInterfa
                         repository, realFileName, false, this.getLog());
 
                 if (fileMeta.isAvailable()) { // found in Pentaho Repository
-                    definitions.put(realFileName,
-                            new ResourceDefinition(ResourceDefinitionHelper.extractFileName(realFileName),
-                                    fileMeta.getBinaryContent()));
+                    realFileName = ResourceDefinitionHelper.extractFileName(realFileName, true);
+                    definitions.put(realFileName, new ResourceDefinition(realFileName, fileMeta.getBinaryContent()));
                 }
 
                 FileObject fileObject = KettleVFS.getFileObject(realFileName, space);

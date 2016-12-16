@@ -302,12 +302,12 @@ public final class ResourceDefinitionHelper {
             }
 
             success = true;
-        } catch (NoSuchMethodException | SecurityException e) {
-            if (logger != null) {
+        } catch (NoSuchMethodException | SecurityException | NullPointerException e) {
+            if (logger != null && logger.isDebug()) {
                 logger.logDebug(WARN_FAILED_TO_LOAD_FILE + fileName, e);
             }
         } catch (Exception e) {
-            if (logger != null) {
+            if (logger != null && logger.isError()) {
                 logger.logError(WARN_FAILED_TO_LOAD_FILE + fileName, e);
             }
         } finally {
@@ -346,8 +346,9 @@ public final class ResourceDefinitionHelper {
         return fileName;
     }
 
-    public static String extractFileName(String fileName) {
-        return FilenameUtils.getName(fileName);
+    public static String extractFileName(String fileName, boolean withRoot) {
+        fileName = FilenameUtils.getName(fileName);
+        return withRoot ? new StringBuilder().append('/').append(fileName).toString() : fileName;
     }
 
     public static String extractExtension(String fileName) {
@@ -383,6 +384,35 @@ public final class ResourceDefinitionHelper {
                         .append(Const.INTERNAL_VARIABLE_TRANSFORMATION_FILENAME_DIRECTORY)
                         .append(VARIABLE_SUFFIX)
                         .toString());
+    }
+
+    public static String generateNewFileNameForWrite(String fileName, String tmpDir) {
+        int index = fileName == null ? 0 : fileName.indexOf('!');
+
+        if (index > 0) {
+            // remove duplicated '/'
+            String slash = "/";
+            String pattern = slash + "+";
+
+            fileName = fileName.substring(index + 1).replaceAll(pattern, slash);
+            if (fileName.startsWith(slash)) {
+                fileName = fileName.substring(1);
+            }
+
+            if (tmpDir == null) {
+                tmpDir = FilenameUtils.normalize(System.getProperty("java.io.tmpdir")).replace('\\', '/');
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(tmpDir);
+            if (sb.length() == 0 || sb.charAt(sb.length() - 1) != slash.charAt(0)) {
+                sb.append(slash);
+            }
+            sb.append(fileName);
+            fileName = sb.toString();
+        }
+
+        return fileName;
     }
 
     private ResourceDefinitionHelper() {
