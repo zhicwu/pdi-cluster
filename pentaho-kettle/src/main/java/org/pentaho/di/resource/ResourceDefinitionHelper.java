@@ -376,9 +376,30 @@ public final class ResourceDefinitionHelper {
         return fileName;
     }
 
-    public static String extractFileName(String fileName, boolean withRoot) {
+    public static String extractDirectory(String fileName) {
+        if (fileName == null) {
+            return fileName;
+        }
+
+        // FIXME still possible that fileName does not contain any variable
+        int varIdx = fileName.indexOf(VARIABLE_PREFIX);
+        int pathIdx = fileName.lastIndexOf('/');
+
+        if (varIdx > 0) {
+            for (int i = varIdx - 1; i >= 0; i--) {
+                if (fileName.charAt(i) == '/') {
+                    pathIdx = i;
+                    break;
+                }
+            }
+        }
+
+        return pathIdx > 0 ? fileName.substring(0, pathIdx) : "/";
+    }
+
+    public static String extractFileName(String fileName, boolean underRoot) {
         fileName = FilenameUtils.getName(fileName);
-        return withRoot ? new StringBuilder().append('/').append(fileName).toString() : fileName;
+        return underRoot ? new StringBuilder().append('/').append(fileName).toString() : fileName;
     }
 
     public static String extractExtension(String fileName) {

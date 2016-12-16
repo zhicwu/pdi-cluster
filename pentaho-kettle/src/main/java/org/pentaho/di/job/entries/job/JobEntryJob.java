@@ -1199,9 +1199,11 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     if (rep != null) {
                         // need to try to load from the repository
                         realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
+
+                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
+                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
+
                         try {
-                            String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
-                            String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                             // jobMeta = rep.loadJob(tmpFilename, dir, null, null);
                             jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
@@ -1209,9 +1211,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
                                 try {
-                                    String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1,
-                                            realFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
-                                    String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
+                                    tmpFilename = tmpFilename.substring(0,
+                                            tmpFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
                                     RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                                     jobMeta = rep.loadJob(tmpFilename, dir, null, null);
                                 } catch (KettleException ke2) {
