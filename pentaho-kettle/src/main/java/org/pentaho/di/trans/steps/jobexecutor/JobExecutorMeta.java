@@ -621,10 +621,10 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                     //
                     if (rep != null) {
                         realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
+                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
+                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
                         // need to try to load from the repository
                         try {
-                            String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
-                            String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                             // mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
                             mappingJobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
@@ -632,9 +632,8 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
                                 try {
-                                    String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1,
-                                            realFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
-                                    String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
+                                    tmpFilename = tmpFilename.substring(0,
+                                            tmpFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
                                     RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                                     mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
                                 } catch (KettleException ke2) {
