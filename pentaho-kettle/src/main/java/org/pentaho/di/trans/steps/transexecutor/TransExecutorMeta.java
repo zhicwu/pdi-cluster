@@ -613,10 +613,11 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
                     //
                     if (rep != null) {
                         // need to try to load from the repository
-                        realFilename = r.normalizeSlashes(realFilename);
+                        realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
+                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
+                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
+
                         try {
-                            String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
-                            String tmpFilename = realFilename.substring(realFilename.lastIndexOf("/") + 1);
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                             // mappingTransMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
                             mappingTransMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
@@ -624,10 +625,8 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
                             // try without extension
                             if (realFilename.endsWith(Const.STRING_TRANS_DEFAULT_EXT)) {
                                 try {
-                                    String tmpFilename =
-                                            realFilename.substring(realFilename.lastIndexOf("/") + 1, realFilename.indexOf("."
-                                                    + Const.STRING_TRANS_DEFAULT_EXT));
-                                    String dirStr = realFilename.substring(0, realFilename.lastIndexOf("/"));
+                                    tmpFilename = tmpFilename.substring(0,
+                                            tmpFilename.indexOf("." + Const.STRING_TRANS_DEFAULT_EXT));
                                     RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
                                     mappingTransMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
                                 } catch (KettleException ke2) {

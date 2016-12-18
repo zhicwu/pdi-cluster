@@ -15,6 +15,7 @@
  ******************************************************************************/
 package org.pentaho.di.resource;
 
+import com.google.common.base.Strings;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -32,6 +33,7 @@ import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.trans.TransMeta;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -64,6 +66,8 @@ public final class ResourceDefinitionHelper {
     private final static String METHOD_GET_NAME = "getName";
     private final static String METHOD_GET_PUR = "getPur";
 
+    private final static String FS_PROTOCOL = "file://";
+
     private final static String WARN_FAILED_TO_LOAD_FILE = "Failed to get file content from Pentaho Repository: ";
 
     public static class SimpleFileMeta {
@@ -71,12 +75,15 @@ public final class ResourceDefinitionHelper {
         private final boolean isText;
         private final String textContent;
         private final byte[] binaryContent;
+        private final boolean available;
 
-        public SimpleFileMeta(String fileName, boolean isText, String textContent, byte[] binaryContent) {
+        public SimpleFileMeta(String fileName, boolean isText,
+                              String textContent, byte[] binaryContent, boolean available) {
             this.fileName = fileName;
             this.isText = isText;
             this.textContent = textContent;
             this.binaryContent = binaryContent;
+            this.available = available;
         }
 
         public String getFileName() {
@@ -97,6 +104,14 @@ public final class ResourceDefinitionHelper {
 
         public byte[] getBinaryContent() {
             return binaryContent;
+        }
+
+        public InputStream getBinaryInputStream() {
+            return new ByteArrayInputStream(binaryContent);
+        }
+
+        public boolean isAvailable() {
+            return available;
         }
     }
 
@@ -184,6 +199,26 @@ public final class ResourceDefinitionHelper {
         return definitions.containsKey(fullname) || meta.equals(space);
     }
 
+    private static void loadTransformationRecursively(
+            Repository rep, TransMetaCollection tmc, RepositoryDirectoryInterface dir) throws KettleException {
+        if (rep == null || tmc == null || dir == null) {
+            return;
+        }
+
+        for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
+            if (element.getObjectType() != RepositoryObjectType.TRANSFORMATION) {
+                continue;
+            }
+
+            tmc.attachTransMeta(rep.loadTransformation(element.getName(), dir, null, true, null));
+        }
+
+        // now sub-directories
+        for (RepositoryDirectoryInterface d : dir.getChildren()) {
+            loadTransformationRecursively(rep, tmc, d);
+        }
+    }
+
     public static TransMeta loadTransformation(
             Repository rep, RepositoryDirectoryInterface dir, String realFileName) throws KettleException {
         TransMeta transMeta = null;
@@ -196,18 +231,33 @@ public final class ResourceDefinitionHelper {
             TransMetaCollection tmc = new TransMetaCollection();
             transMeta = tmc;
             transMeta.setFilename(realFileName);
-            for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
-                if (element.getObjectType() != RepositoryObjectType.TRANSFORMATION) {
-                    continue;
-                }
 
-                tmc.attachTransMeta(rep.loadTransformation(element.getName(), dir, null, true, null));
-            }
+            loadTransformationRecursively(rep, tmc, dir);
         } else {
             transMeta = rep.loadTransformation(realFileName, dir, null, true, null);
         }
 
         return transMeta;
+    }
+
+    private static void loadJobRecursively(
+            Repository rep, JobMetaCollection jmc, RepositoryDirectoryInterface dir) throws KettleException {
+        if (rep == null || jmc == null || dir == null) {
+            return;
+        }
+
+        for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
+            if (element.getObjectType() != RepositoryObjectType.JOB) {
+                continue;
+            }
+
+            jmc.attachJobMeta(rep.loadJob(element.getName(), dir, null, null));
+        }
+
+        // now sub-directories
+        for (RepositoryDirectoryInterface d : dir.getChildren()) {
+            loadJobRecursively(rep, jmc, d);
+        }
     }
 
     public static JobMeta loadJob(
@@ -222,13 +272,8 @@ public final class ResourceDefinitionHelper {
             JobMetaCollection jmc = new JobMetaCollection();
             jobMeta = jmc;
             jobMeta.setFilename(realFileName);
-            for (RepositoryElementMetaInterface element : dir.getRepositoryObjects()) {
-                if (element.getObjectType() != RepositoryObjectType.JOB) {
-                    continue;
-                }
 
-                jmc.attachJobMeta(rep.loadJob(element.getName(), dir, null, null));
-            }
+            loadJobRecursively(rep, jmc, dir);
         } else {
             jobMeta = rep.loadJob(realFileName, dir, null, null);
         }
@@ -254,6 +299,7 @@ public final class ResourceDefinitionHelper {
         byte[] binaryContent = new byte[0];
 
         InputStream is = null;
+        boolean success = false;
         try {
             Class repositoryClass = repository.getClass();
             Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
@@ -286,19 +332,21 @@ public final class ResourceDefinitionHelper {
                 // FIXME this could be a problem, let's hope the binary file is not that large...
                 binaryContent = IOUtils.toByteArray(is);
             }
-        } catch (NoSuchMethodException | SecurityException e) {
-            if (logger != null) {
+
+            success = true;
+        } catch (NoSuchMethodException | SecurityException | NullPointerException e) {
+            if (logger != null && logger.isDebug()) {
                 logger.logDebug(WARN_FAILED_TO_LOAD_FILE + fileName, e);
             }
         } catch (Exception e) {
-            if (logger != null) {
+            if (logger != null && logger.isError()) {
                 logger.logError(WARN_FAILED_TO_LOAD_FILE + fileName, e);
             }
         } finally {
             IOUtils.closeQuietly(is);
         }
 
-        return new SimpleFileMeta(simpleName, isTextFile, textContent, binaryContent);
+        return new SimpleFileMeta(simpleName, isTextFile, textContent, binaryContent, success);
     }
 
     /**
@@ -311,6 +359,123 @@ public final class ResourceDefinitionHelper {
      */
     public static String getTextFileContent(Repository repository, String fileName, LogChannelInterface logger) {
         return loadFileFromPurRepository(repository, fileName, true, logger).getTextContent();
+    }
+
+    public static String normalizeFileName(String fileName, VariableSpace space) {
+        if (space != null) {
+            fileName = space.environmentSubstitute(fileName);
+        }
+
+        return normalizeFileName(fileName);
+    }
+
+    public static String normalizeFileName(String fileName) {
+        String normalizedFileName = FilenameUtils.normalize(fileName);
+        if (!Strings.isNullOrEmpty(normalizedFileName)) {
+            fileName = normalizedFileName;
+        }
+
+        return fileName;
+    }
+
+    public static String extractDirectory(String fileName) {
+        if (fileName == null) {
+            return fileName;
+        }
+
+        // FIXME still possible that fileName does not contain any variable
+        int varIdx = fileName.indexOf(VARIABLE_PREFIX);
+        int pathIdx = fileName.lastIndexOf('/');
+
+        if (varIdx > 0) {
+            for (int i = varIdx - 1; i >= 0; i--) {
+                if (fileName.charAt(i) == '/') {
+                    pathIdx = i;
+                    break;
+                }
+            }
+        }
+
+        return pathIdx > 0 ? fileName.substring(0, pathIdx) : "/";
+    }
+
+    public static String extractFileName(String fileName, boolean underRoot) {
+        fileName = FilenameUtils.getName(fileName);
+        return underRoot ? new StringBuilder().append('/').append(fileName).toString() : fileName;
+    }
+
+    public static String extractExtension(String fileName) {
+        return extractExtension(fileName, false);
+    }
+
+    public static String extractExtension(String fileName, boolean withDot) {
+        StringBuilder sb = new StringBuilder(10);
+        if (withDot) {
+            sb.append('.');
+        }
+
+        if (fileName != null) {
+            sb.append(FilenameUtils.getExtension(fileName));
+        }
+
+        return sb.toString();
+    }
+
+    public static String normalizeJobResourceName(String resourceName) {
+        return resourceName.replace(FS_PROTOCOL,
+                new StringBuilder(20)
+                        .append(VARIABLE_PREFIX)
+                        .append(Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY)
+                        .append(VARIABLE_SUFFIX)
+                        .toString());
+    }
+
+    public static String normalizeTransformationResourceName(String resourceName) {
+        return resourceName.replace(FS_PROTOCOL,
+                new StringBuilder(20)
+                        .append(VARIABLE_PREFIX)
+                        .append(Const.INTERNAL_VARIABLE_TRANSFORMATION_FILENAME_DIRECTORY)
+                        .append(VARIABLE_SUFFIX)
+                        .toString());
+    }
+
+    public static String generateNewFileNameForOutput(String fileName, boolean fromPur) {
+        if (fileName == null) {
+            return fileName;
+        }
+
+        if (fromPur) {
+            fileName = extractFileName(fileName, false);
+        }
+
+        String slash = "/";
+        int index = fileName.indexOf('!');
+
+        if (index > 0) {
+            // remove duplicated '/'
+            String pattern = slash + "+";
+
+            fileName = fileName.substring(index + 1).replaceAll(pattern, slash);
+            if (fileName.startsWith(slash)) {
+                fileName = fileName.substring(1);
+            }
+
+            fromPur = true;
+        }
+
+        if (fromPur) {
+            String tmpDir = FilenameUtils.normalize(System.getProperty("java.io.tmpdir")).replace('\\', '/');
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(tmpDir);
+            if (sb.length() == 0 || sb.charAt(sb.length() - 1) != slash.charAt(0)) {
+                sb.append(slash);
+            }
+            sb.append(fileName);
+            fileName = sb.toString();
+        }
+
+        return fileName;
     }
 
     private ResourceDefinitionHelper() {
