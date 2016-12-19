@@ -279,6 +279,22 @@ public final class ResourceDefinitionHelper {
         return jobMeta;
     }
 
+    public static boolean isPentahoRepository(Repository repository) {
+        boolean isPur = false;
+
+        if (repository != null) {
+            try {
+                Class repositoryClass = repository.getClass();
+                Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
+                isPur = unifiedRepository != null;
+            } catch (Exception e) {
+                // ignore errors
+            }
+        }
+
+        return isPur;
+    }
+
     /**
      * Try to get content of given file(text or binary) from Pentaho Repository.
      *

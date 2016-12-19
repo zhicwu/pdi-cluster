@@ -955,11 +955,17 @@ public class JobMeta extends AbstractMeta
             //
             // Read the database connections
             //
-            int nr = XMLHandler.countNodes(jobnode, "connection");
+            boolean isPur = ResourceDefinitionHelper.isPentahoRepository(rep);
+
+            int nr = XMLHandler.countNodes(jobnode, DatabaseMeta.XML_TAG);
             Set<String> privateDatabases = new HashSet<String>(nr);
             for (int i = 0; i < nr; i++) {
-                Node dbnode = XMLHandler.getSubNodeByNr(jobnode, "connection", i);
+                Node dbnode = XMLHandler.getSubNodeByNr(jobnode, DatabaseMeta.XML_TAG, i);
                 DatabaseMeta dbcon = new DatabaseMeta(dbnode);
+                if (isPur && !(dbcon.getAccessType() == DatabaseMeta.TYPE_ACCESS_JNDI
+                        && ResourceDefinitionHelper.containsVariable(dbcon.getDatabaseName()))) {
+                    continue;
+                }
                 dbcon.shareVariablesWith(this);
                 if (!dbcon.isShared()) {
                     privateDatabases.add(dbcon.getName());
