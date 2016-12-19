@@ -2778,6 +2778,8 @@ public class TransMeta extends AbstractMeta
                 importFromMetaStore();
 
                 // Handle connections
+                boolean isPur = ResourceDefinitionHelper.isPentahoRepository(rep);
+
                 int n = XMLHandler.countNodes(transnode, DatabaseMeta.XML_TAG);
                 Set<String> privateTransformationDatabases = new HashSet<String>(n);
                 if (log.isDebug()) {
@@ -2790,6 +2792,11 @@ public class TransMeta extends AbstractMeta
                     Node nodecon = XMLHandler.getSubNodeByNr(transnode, DatabaseMeta.XML_TAG, i);
 
                     DatabaseMeta dbcon = new DatabaseMeta(nodecon);
+                    if (isPur && !(dbcon.getAccessType() == DatabaseMeta.TYPE_ACCESS_JNDI
+                            && ResourceDefinitionHelper.containsVariable(dbcon.getDatabaseName()))) {
+                        continue;
+                    }
+
                     dbcon.shareVariablesWith(this);
                     if (!dbcon.isShared()) {
                         privateTransformationDatabases.add(dbcon.getName());
