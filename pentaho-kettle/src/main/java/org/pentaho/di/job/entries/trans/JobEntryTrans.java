@@ -1406,6 +1406,7 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         copyVariablesFrom(space);
         TransMeta transMeta = getTransMeta(repository, space);
 
+        boolean isMultiple = false;
         if (transMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
             ResourceDefinitionHelper.TransMetaCollection tmc = (ResourceDefinitionHelper.TransMetaCollection) transMeta;
             for (TransMeta t : tmc.getAttachedMeta()) {
@@ -1414,13 +1415,13 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                 }
             }
 
-            return null;
+            isMultiple = transMeta.getFilename() != null;
         }
 
         // Also go down into the transformation and export the files there. (mapping recursively down)
         //
-        String proposedNewFilename =
-                transMeta.exportResources(transMeta, definitions, namingInterface, repository, metaStore);
+        String proposedNewFilename = isMultiple ? transMeta.getFilename()
+                : transMeta.exportResources(transMeta, definitions, namingInterface, repository, metaStore);
 
         // To get a relative path to it, we inject ${Internal.Job.Filename.Directory}
         //
