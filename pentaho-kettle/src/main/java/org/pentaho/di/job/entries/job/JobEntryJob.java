@@ -1333,6 +1333,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
         copyVariablesFrom(space); // To make sure variables are available.
         JobMeta jobMeta = getJobMeta(repository, metaStore, space);
 
+        boolean isMultiple = false;
         if (jobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {
             ResourceDefinitionHelper.JobMetaCollection jmc = (ResourceDefinitionHelper.JobMetaCollection) jobMeta;
             for (JobMeta j : jmc.getAttachedMeta()) {
@@ -1341,14 +1342,14 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                 }
             }
 
-            return null;
+            isMultiple = jobMeta.getFilename() != null;
         }
 
         // Also go down into the job and export the files there. (going down
         // recursively)
         //
-        String proposedNewFilename =
-                jobMeta.exportResources(jobMeta, definitions, namingInterface, repository, metaStore);
+        String proposedNewFilename = isMultiple ? jobMeta.getFilename()
+                : jobMeta.exportResources(jobMeta, definitions, namingInterface, repository, metaStore);
 
         // To get a relative path to it, we inject
         // ${Internal.Job.Filename.Directory}

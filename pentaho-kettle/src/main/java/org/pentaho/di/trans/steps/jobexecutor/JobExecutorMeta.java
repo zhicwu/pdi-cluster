@@ -782,6 +782,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             //
             JobMeta executorJobMeta = loadJobMeta(this, repository, space);
 
+            boolean isMultiple = false;
             if (executorJobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {
                 ResourceDefinitionHelper.JobMetaCollection jmc = (ResourceDefinitionHelper.JobMetaCollection) executorJobMeta;
                 for (JobMeta j : jmc.getAttachedMeta()) {
@@ -790,15 +791,15 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                     }
                 }
 
-                return null;
+                isMultiple = executorJobMeta.getFilename() != null;
             }
 
             // Also go down into the mapping transformation and export the files
             // there. (mapping recursively down)
             //
-            String proposedNewFilename =
-                    executorJobMeta.exportResources(
-                            executorJobMeta, definitions, resourceNamingInterface, repository, metaStore);
+            String proposedNewFilename = isMultiple ? executorJobMeta.getFilename()
+                    : executorJobMeta.exportResources(
+                    executorJobMeta, definitions, resourceNamingInterface, repository, metaStore);
 
             // To get a relative path to it, we inject
             // ${Internal.Transformation.Filename.Directory}

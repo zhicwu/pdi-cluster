@@ -780,6 +780,7 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
             //
             TransMeta executorTransMeta = loadTransMeta(this, repository, space);
 
+            boolean isMultiple = false;
             if (executorTransMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
                 ResourceDefinitionHelper.TransMetaCollection tmc = (ResourceDefinitionHelper.TransMetaCollection) executorTransMeta;
                 for (TransMeta t : tmc.getAttachedMeta()) {
@@ -788,15 +789,15 @@ public class TransExecutorMeta extends BaseStepMeta implements StepMetaInterface
                     }
                 }
 
-                return null;
+                isMultiple = executorTransMeta.getFilename() != null;
             }
 
             // Also go down into the mapping transformation and export the files
             // there. (mapping recursively down)
             //
-            String proposedNewFilename =
-                    executorTransMeta.exportResources(executorTransMeta, definitions, resourceNamingInterface, repository,
-                            metaStore);
+            String proposedNewFilename = isMultiple ? executorTransMeta.getFilename()
+                    : executorTransMeta.exportResources(
+                    executorTransMeta, definitions, resourceNamingInterface, repository, metaStore);
 
             // To get a relative path to it, we inject
             // ${Internal.Transformation.Filename.Directory}
