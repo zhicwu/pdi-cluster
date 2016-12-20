@@ -185,6 +185,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
         String id = request.getParameter("id");
         boolean useXML = "Y".equalsIgnoreCase(request.getParameter("xml"));
         boolean autoRefresh = "Y".equalsIgnoreCase(request.getParameter("refresh"));
+        boolean showImage = "Y".equalsIgnoreCase(request.getParameter("image"));
         int startLineNr = Const.toInt(request.getParameter("from"), 0);
 
         response.setStatus(HttpServletResponse.SC_OK);
@@ -296,16 +297,18 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
 
                     // Show job image?
                     //
-                    Point max = job.getJobMeta().getMaximum();
-                    max.x += 20;
-                    max.y += 20;
-                    out
-                            .print("<iframe height=\""
-                                    + max.y + "\" width=\"" + max.x + "\" seamless src=\""
-                                    + convertContextPath(GetJobImageServlet.CONTEXT_PATH) + "?name="
-                                    + URLEncoder.encode(jobName, "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
-                                    + "\"></iframe>");
-                    out.print("<p>");
+                    if (showImage) {
+                        Point max = job.getJobMeta().getMaximum();
+                        max.x += 20;
+                        max.y += 20;
+                        out
+                                .print("<iframe style=\"border: 0px\" height=\""
+                                        + max.y + "\" width=\"100%\" seamless src=\""
+                                        + convertContextPath(GetJobImageServlet.CONTEXT_PATH) + "?name="
+                                        + URLEncoder.encode(jobName, "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
+                                        + "\"></iframe>");
+                        out.print("<p>");
+                    }
 
                     // out.print("<a href=\"" + convertContextPath(GetJobImageServlet.CONTEXT_PATH) + "?name=" +
                     // URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&id="+id+"\">"
@@ -317,36 +320,32 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                                 + convertContextPath(StartJobServlet.CONTEXT_PATH) + "?name="
                                 + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&id="
                                 + URLEncoder.encode(id, "UTF-8") + "\">"
-                                + BaseMessages.getString(PKG, "GetJobStatusServlet.StartJob") + "</a>");
-                        out.print("<p>");
+                                + BaseMessages.getString(PKG, "GetJobStatusServlet.StartJob") + "</a>&nbsp; |&nbsp; ");
                     } else {
                         out.print("<a href=\""
                                 + convertContextPath(StopJobServlet.CONTEXT_PATH) + "?name="
                                 + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&id="
                                 + URLEncoder.encode(id, "UTF-8") + "\">"
-                                + BaseMessages.getString(PKG, "GetJobStatusServlet.StopJob") + "</a>");
-                        out.print("<p>");
+                                + BaseMessages.getString(PKG, "GetJobStatusServlet.StopJob") + "</a>&nbsp; |&nbsp; ");
                     }
-
-                    out.println("<p>");
 
                     out.print("<a href=\""
                             + convertContextPath(GetJobStatusServlet.CONTEXT_PATH) + "?name="
                             + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&xml=y&id="
                             + URLEncoder.encode(id, "UTF-8") + "\">"
-                            + BaseMessages.getString(PKG, "TransStatusServlet.ShowAsXml") + "</a><br>");
+                            + BaseMessages.getString(PKG, "TransStatusServlet.ShowAsXml") + "</a>&nbsp; |&nbsp; ");
                     out.print("<a href=\""
-                            + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
-                            + BaseMessages.getString(PKG, "TransStatusServlet.BackToStatusPage") + "</a><br>");
-                    out.print("<p><a href=\""
                             + convertContextPath(GetJobStatusServlet.CONTEXT_PATH) + "?name="
                             + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
-                            + "\">" + BaseMessages.getString(PKG, "TransStatusServlet.Refresh") + "</a>");
+                            + "\">" + BaseMessages.getString(PKG, "TransStatusServlet.Refresh") + "</a>&nbsp; |&nbsp; ");
+                    out.print("<a href=\""
+                            + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
+                            + BaseMessages.getString(PKG, "TransStatusServlet.BackToStatusPage") + "</a>");
 
                     // Put the logging below that.
 
                     out.println("<p>");
-                    out.println("<textarea id=\"joblog\" cols=\"120\" rows=\"20\" wrap=\"off\" "
+                    out.println("<textarea id=\"joblog\" style=\"width: 100%\" rows=\"30\" wrap=\"off\" "
                             + "name=\"Job log\" readonly=\"readonly\">"
                             + encoder.encodeForHTML(logText) + "</textarea>");
 
