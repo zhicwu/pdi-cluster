@@ -40,6 +40,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -384,14 +385,18 @@ public class GetHealthServlet extends BaseHttpServlet implements CartePluginInte
             // FIXME this might be slow but should be fine for a small cluster with 5 - 10 nodes
             List<SlaveServerDetection> detections = getDetections();
             if (detections != null) {
-                for (SlaveServerDetection detectedServer : detections) {
-                    SlaveServer server = detectedServer.getSlaveServer();
-                    try {
-                        xml.append(
-                                server.execService(SLAVE_CONTEXT_PATH));
-                    } catch (Exception e) {
-                        xml.append(buildDummyServerStatusXml(getServerName(server)));
+                try {
+                    for (SlaveServerDetection detectedServer : detections) {
+                        SlaveServer server = detectedServer.getSlaveServer();
+                        try {
+                            xml.append(
+                                    server.execService(SLAVE_CONTEXT_PATH));
+                        } catch (Exception e) {
+                            xml.append(buildDummyServerStatusXml(getServerName(server)));
+                        }
                     }
+                } catch (ConcurrentModificationException e) {
+                    // this is fine as we trade thread-safty for performance
                 }
             }
 
