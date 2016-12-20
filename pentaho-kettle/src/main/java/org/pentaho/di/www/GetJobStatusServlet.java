@@ -332,7 +332,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                             + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&xml=y&id="
                             + URLEncoder.encode(id, "UTF-8") + "\">"
                             + BaseMessages.getString(PKG, "TransStatusServlet.ShowAsXml") + "</a>&nbsp; |&nbsp; ");
-                    out.print("<p><a href=\""
+                    out.print("<a href=\""
                             + convertContextPath(GetJobStatusServlet.CONTEXT_PATH) + "?name="
                             + URLEncoder.encode(Const.NVL(jobName, ""), "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
                             + "\">" + BaseMessages.getString(PKG, "TransStatusServlet.Refresh") + "</a>&nbsp; |&nbsp; ");
