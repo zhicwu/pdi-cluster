@@ -35,6 +35,7 @@ import org.pentaho.di.trans.TransMeta;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -285,8 +286,8 @@ public final class ResourceDefinitionHelper {
         if (repository != null) {
             try {
                 Class repositoryClass = repository.getClass();
-                Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
-                isPur = unifiedRepository != null;
+                Method getPurMethod = repositoryClass.getMethod(METHOD_GET_PUR);
+                isPur = getPurMethod != null;
             } catch (Exception e) {
                 // ignore errors
             }
