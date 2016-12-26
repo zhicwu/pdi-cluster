@@ -287,8 +287,7 @@ public final class ResourceDefinitionHelper {
         if (repository != null) {
             try {
                 Class repositoryClass = repository.getClass();
-                Object unifiedRepository = repositoryClass.getMethod(METHOD_GET_PUR).invoke(repository);
-                isPur = unifiedRepository != null;
+                isPur = repositoryClass.getMethod(METHOD_GET_PUR) != null;
             } catch (Exception e) {
                 // ignore errors
             }
