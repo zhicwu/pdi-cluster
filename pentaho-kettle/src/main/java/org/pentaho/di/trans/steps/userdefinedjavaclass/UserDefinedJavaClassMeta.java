@@ -174,7 +174,7 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
             if (log.isDebug()) {
                 log.logError("Full debugging stacktrace of UserDefinedJavaClass instanciation exception:", e.getCause());
             }
-            KettleException kettleException = new KettleException(e.getMessage());
+            KettleException kettleException = new KettleException(e.toString(), e);
             kettleException.setStackTrace(new StackTraceElement[]{});
             cookErrors.add(kettleException);
             return null;
