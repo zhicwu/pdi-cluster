@@ -23,8 +23,10 @@
 
 package org.pentaho.di.job;
 
+import com.google.common.base.Strings;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
+import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.*;
 import org.pentaho.di.core.database.Database;
@@ -1704,7 +1706,6 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
      */
     public static String sendToSlaveServer(JobMeta jobMeta, JobExecutionConfiguration executionConfiguration,
                                            Repository repository, IMetaStore metaStore) throws KettleException {
-        String carteObjectId;
         SlaveServer slaveServer = executionConfiguration.getRemoteServer();
 
         if (slaveServer == null) {
@@ -1717,58 +1718,64 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
         // Align logging levels between execution configuration and remote server
         slaveServer.getLogChannel().setLogLevel(executionConfiguration.getLogLevel());
 
+        String carteObjectId = ServerCache.getCachedIdentity(jobMeta, executionConfiguration.getParams(), slaveServer);
+
         FileObject tempFile = null;
         try {
-            // Inject certain internal variables to make it more intuitive.
-            //
-            for (String var : Const.INTERNAL_TRANS_VARIABLES) {
-                executionConfiguration.getVariables().put(var, jobMeta.getVariable(var));
-            }
-            for (String var : Const.INTERNAL_JOB_VARIABLES) {
-                executionConfiguration.getVariables().put(var, jobMeta.getVariable(var));
-            }
-
-            Map<String, String> jobParams = new HashMap<String, String>();
-            for (String key : jobMeta.listParameters()) {
-                String value = jobMeta.getParameterValue(key);
-                String defaultValue = jobMeta.getParameterDefault(key);
-                jobParams.put(key,
-                        executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
-            }
-
-            executionConfiguration.getParams().putAll(jobParams);
-
-            if (executionConfiguration.isPassingExport()) {
-                // First export the job... slaveServer.getVariable("MASTER_HOST")
+            if (Strings.isNullOrEmpty(carteObjectId)) {
+                // Inject certain internal variables to make it more intuitive.
                 //
-                tempFile =
-                        KettleVFS.createTempFile("jobExport", ".zip", System.getProperty("java.io.tmpdir"), jobMeta);
-
-                TopLevelResource topLevelResource =
-                        ResourceUtil.serializeResourceExportInterface(tempFile.getName().toString(), jobMeta, jobMeta, repository,
-                                metaStore, executionConfiguration.getXML(), CONFIGURATION_IN_EXPORT_FILENAME);
-
-                // Send the zip file over to the slave server...
-                //
-                String result =
-                        slaveServer.sendExport(topLevelResource.getArchiveName(), AddExportServlet.TYPE_JOB, topLevelResource
-                                .getBaseResourceName());
-                WebResult webResult = WebResult.fromXMLString(result);
-                if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
-                    throw new KettleException("There was an error passing the exported job to the remote server: " + Const.CR
-                            + webResult.getMessage());
+                for (String var : Const.INTERNAL_TRANS_VARIABLES) {
+                    executionConfiguration.getVariables().put(var, jobMeta.getVariable(var));
                 }
-                carteObjectId = webResult.getId();
-            } else {
-                String xml = new JobConfiguration(jobMeta, executionConfiguration).getXML();
-
-                String reply = slaveServer.sendXML(xml, RegisterJobServlet.CONTEXT_PATH + "/?xml=Y");
-                WebResult webResult = WebResult.fromXMLString(reply);
-                if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
-                    throw new KettleException("There was an error posting the job on the remote server: " + Const.CR + webResult
-                            .getMessage());
+                for (String var : Const.INTERNAL_JOB_VARIABLES) {
+                    executionConfiguration.getVariables().put(var, jobMeta.getVariable(var));
                 }
-                carteObjectId = webResult.getId();
+
+                Map<String, String> jobParams = new HashMap<String, String>();
+                for (String key : jobMeta.listParameters()) {
+                    String value = jobMeta.getParameterValue(key);
+                    String defaultValue = jobMeta.getParameterDefault(key);
+                    jobParams.put(key,
+                            executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
+                }
+
+                executionConfiguration.getParams().putAll(jobParams);
+
+                if (executionConfiguration.isPassingExport()) {
+                    // First export the job... slaveServer.getVariable("MASTER_HOST")
+                    //
+                    tempFile =
+                            KettleVFS.createTempFile("jobExport", ".zip", System.getProperty("java.io.tmpdir"), jobMeta);
+
+                    TopLevelResource topLevelResource =
+                            ResourceUtil.serializeResourceExportInterface(tempFile.getName().toString(), jobMeta, jobMeta, repository,
+                                    metaStore, executionConfiguration.getXML(), CONFIGURATION_IN_EXPORT_FILENAME);
+
+                    // Send the zip file over to the slave server...
+                    //
+                    String result =
+                            slaveServer.sendExport(topLevelResource.getArchiveName(), AddExportServlet.TYPE_JOB, topLevelResource
+                                    .getBaseResourceName());
+                    WebResult webResult = WebResult.fromXMLString(result);
+                    if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                        throw new KettleException("There was an error passing the exported job to the remote server: " + Const.CR
+                                + webResult.getMessage());
+                    }
+                    carteObjectId = webResult.getId();
+                } else {
+                    String xml = new JobConfiguration(jobMeta, executionConfiguration).getXML();
+
+                    String reply = slaveServer.sendXML(xml, RegisterJobServlet.CONTEXT_PATH + "/?xml=Y");
+                    WebResult webResult = WebResult.fromXMLString(reply);
+                    if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                        throw new KettleException("There was an error posting the job on the remote server: " + Const.CR + webResult
+                                .getMessage());
+                    }
+                    carteObjectId = webResult.getId();
+                }
+
+                ServerCache.cacheIdentity(jobMeta, executionConfiguration.getParams(), slaveServer, carteObjectId);
             }
 
             // Start the job
@@ -1778,9 +1785,12 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
                             "UTF-8") + "&xml=Y&id=" + carteObjectId);
             WebResult webResult = WebResult.fromXMLString(reply);
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                ServerCache.invalidate(jobMeta, executionConfiguration.getParams(), slaveServer);
+
                 throw new KettleException("There was an error starting the job on the remote server: " + Const.CR + webResult
                         .getMessage());
             }
+
             return carteObjectId;
         } catch (KettleException ke) {
             throw ke;

@@ -23,9 +23,11 @@
 
 package org.pentaho.di.trans;
 
+import com.google.common.base.Strings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
+import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.*;
 import org.pentaho.di.core.database.Database;
@@ -4098,7 +4100,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
      */
     public static String sendToSlaveServer(TransMeta transMeta, TransExecutionConfiguration executionConfiguration,
                                            Repository repository, IMetaStore metaStore) throws KettleException {
-        String carteObjectId;
         SlaveServer slaveServer = executionConfiguration.getRemoteServer();
 
         if (slaveServer == null) {
@@ -4108,68 +4109,74 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             throw new KettleException("The transformation needs a name to uniquely identify it by on the remote server.");
         }
 
+        String carteObjectId = ServerCache.getCachedIdentity(transMeta, executionConfiguration.getParams(), slaveServer);
+
         FileObject tempFile = null;
         try {
-            // Inject certain internal variables to make it more intuitive.
-            //
-            Map<String, String> vars = new HashMap<String, String>();
-
-            for (String var : Const.INTERNAL_TRANS_VARIABLES) {
-                vars.put(var, transMeta.getVariable(var));
-            }
-            for (String var : Const.INTERNAL_JOB_VARIABLES) {
-                vars.put(var, transMeta.getVariable(var));
-            }
-
-            Map<String, String> transParams = new HashMap<String, String>();
-            for (String key : transMeta.listParameters()) {
-                String value = transMeta.getParameterValue(key);
-                String defaultValue = transMeta.getParameterDefault(key);
-                transParams.put(key,
-                        executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
-            }
-
-            executionConfiguration.getParams().putAll(transParams);
-
-            executionConfiguration.getVariables().putAll(vars);
-            slaveServer.injectVariables(executionConfiguration.getVariables());
-
-            slaveServer.getLogChannel().setLogLevel(executionConfiguration.getLogLevel());
-
-            if (executionConfiguration.isPassingExport()) {
-
-                // First export the job...
+            if (Strings.isNullOrEmpty(carteObjectId)) {
+                // Inject certain internal variables to make it more intuitive.
                 //
-                tempFile =
-                        KettleVFS.createTempFile("transExport", ".zip", System.getProperty("java.io.tmpdir"), transMeta);
+                Map<String, String> vars = new HashMap<String, String>();
 
-                TopLevelResource topLevelResource =
-                        ResourceUtil.serializeResourceExportInterface(tempFile.getName().toString(), transMeta, transMeta,
-                                repository, metaStore, executionConfiguration.getXML(), CONFIGURATION_IN_EXPORT_FILENAME);
-
-                // Send the zip file over to the slave server...
-                //
-                String result =
-                        slaveServer.sendExport(topLevelResource.getArchiveName(), AddExportServlet.TYPE_TRANS, topLevelResource
-                                .getBaseResourceName());
-                WebResult webResult = WebResult.fromXMLString(result);
-                if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
-                    throw new KettleException("There was an error passing the exported transformation to the remote server: "
-                            + Const.CR + webResult.getMessage());
+                for (String var : Const.INTERNAL_TRANS_VARIABLES) {
+                    vars.put(var, transMeta.getVariable(var));
                 }
-                carteObjectId = webResult.getId();
-            } else {
-
-                // Now send it off to the remote server...
-                //
-                String xml = new TransConfiguration(transMeta, executionConfiguration).getXML();
-                String reply = slaveServer.sendXML(xml, RegisterTransServlet.CONTEXT_PATH + "/?xml=Y");
-                WebResult webResult = WebResult.fromXMLString(reply);
-                if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
-                    throw new KettleException("There was an error posting the transformation on the remote server: " + Const.CR
-                            + webResult.getMessage());
+                for (String var : Const.INTERNAL_JOB_VARIABLES) {
+                    vars.put(var, transMeta.getVariable(var));
                 }
-                carteObjectId = webResult.getId();
+
+                Map<String, String> transParams = new HashMap<String, String>();
+                for (String key : transMeta.listParameters()) {
+                    String value = transMeta.getParameterValue(key);
+                    String defaultValue = transMeta.getParameterDefault(key);
+                    transParams.put(key,
+                            executionConfiguration.getVariables().getOrDefault(key, value == null ? defaultValue : value));
+                }
+
+                executionConfiguration.getParams().putAll(transParams);
+
+                executionConfiguration.getVariables().putAll(vars);
+                slaveServer.injectVariables(executionConfiguration.getVariables());
+
+                slaveServer.getLogChannel().setLogLevel(executionConfiguration.getLogLevel());
+
+                if (executionConfiguration.isPassingExport()) {
+
+                    // First export the job...
+                    //
+                    tempFile =
+                            KettleVFS.createTempFile("transExport", ".zip", System.getProperty("java.io.tmpdir"), transMeta);
+
+                    TopLevelResource topLevelResource =
+                            ResourceUtil.serializeResourceExportInterface(tempFile.getName().toString(), transMeta, transMeta,
+                                    repository, metaStore, executionConfiguration.getXML(), CONFIGURATION_IN_EXPORT_FILENAME);
+
+                    // Send the zip file over to the slave server...
+                    //
+                    String result =
+                            slaveServer.sendExport(topLevelResource.getArchiveName(), AddExportServlet.TYPE_TRANS, topLevelResource
+                                    .getBaseResourceName());
+                    WebResult webResult = WebResult.fromXMLString(result);
+                    if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                        throw new KettleException("There was an error passing the exported transformation to the remote server: "
+                                + Const.CR + webResult.getMessage());
+                    }
+                    carteObjectId = webResult.getId();
+                } else {
+
+                    // Now send it off to the remote server...
+                    //
+                    String xml = new TransConfiguration(transMeta, executionConfiguration).getXML();
+                    String reply = slaveServer.sendXML(xml, RegisterTransServlet.CONTEXT_PATH + "/?xml=Y");
+                    WebResult webResult = WebResult.fromXMLString(reply);
+                    if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                        throw new KettleException("There was an error posting the transformation on the remote server: " + Const.CR
+                                + webResult.getMessage());
+                    }
+                    carteObjectId = webResult.getId();
+                }
+
+                ServerCache.cacheIdentity(transMeta, executionConfiguration.getParams(), slaveServer, carteObjectId);
             }
 
             // Prepare the transformation
@@ -4179,6 +4186,8 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                             .getName(), "UTF-8") + "&xml=Y&id=" + carteObjectId);
             WebResult webResult = WebResult.fromXMLString(reply);
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                ServerCache.invalidate(transMeta, executionConfiguration.getParams(), slaveServer);
+
                 throw new KettleException("There was an error preparing the transformation for excution on the remote server: "
                         + Const.CR + webResult.getMessage());
             }

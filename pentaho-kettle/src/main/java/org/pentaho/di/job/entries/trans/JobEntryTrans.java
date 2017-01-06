@@ -64,6 +64,8 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
+import static org.pentaho.di.cluster.ServerCache.PARAM_ETL_JOB_ID;
+
 /**
  * This is the job entry that defines a transformation to be run.
  *
@@ -956,6 +958,7 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                                         transMeta.getParameterDefault(param), transMeta.getVariable(param)));
                         params.put(param, value);
                     }
+                    params.put(PARAM_ETL_JOB_ID, parentJob.getParameterValue(PARAM_ETL_JOB_ID));
 
                     if (parentJob.getJobMeta().isBatchIdPassed()) {
                         transExecutionConfiguration.setPassedBatchId(parentJob.getPassedBatchId());

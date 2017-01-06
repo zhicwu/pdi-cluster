@@ -59,6 +59,8 @@ import org.w3c.dom.Node;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import static org.pentaho.di.cluster.ServerCache.PARAM_ETL_JOB_ID;
+
 /**
  * Recursive definition of a Job. This step means that an entire Job has to be executed. It can be the same Job, but
  * just make sure that you don't get an endless loop. Provide an escape routine using JobEval.
@@ -901,11 +903,15 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     jobExecutionConfiguration.setLogLevel(jobLogLevel);
                     jobExecutionConfiguration.setPassingExport(passingExport);
                     jobExecutionConfiguration.setExpandingRemoteJob(expandingRemoteJob);
+
+                    Map<String, String> params = jobExecutionConfiguration.getParams();
                     for (String param : namedParam.listParameters()) {
                         String defValue = namedParam.getParameterDefault(param);
                         String value = namedParam.getParameterValue(param);
-                        jobExecutionConfiguration.getParams().put(param, Const.NVL(value, defValue));
+                        params.put(param, Const.NVL(value, defValue));
                     }
+                    params.put(PARAM_ETL_JOB_ID, parentJob.getParameterValue(PARAM_ETL_JOB_ID));
+
                     if (parentJob.getJobMeta().isBatchIdPassed()) {
                         jobExecutionConfiguration.setPassedBatchId(parentJob.getBatchId());
                     }
