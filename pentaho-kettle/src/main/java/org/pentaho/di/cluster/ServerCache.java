@@ -21,7 +21,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
-import org.pentaho.di.core.logging.LogChannel;
+import org.pentaho.di.core.logging.LogChannelInterface;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.ObjectRevision;
@@ -49,9 +49,17 @@ public final class ServerCache {
     private static final Cache<String, String> resourceCache = CacheBuilder.newBuilder()
             .maximumSize(RESOURCE_CACHE_SIZE)
             .expireAfterAccess(RESOURCE_EXPIRATION_MINUTE, TimeUnit.MINUTES)
+            .recordStats()
             .build();
 
     private static final String UNKNOWN_RESOURCE = "n/a";
+
+    private static void logBasic(SlaveServer server, String message) {
+        LogChannelInterface logger = server == null ? null : server.getLogChannel();
+        if (logger != null) {
+            logger.logBasic(message);
+        }
+    }
 
     public static String buildResourceName(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
         StringBuilder sb = new StringBuilder();
@@ -103,12 +111,22 @@ public final class ServerCache {
                 if (meta instanceof JobMeta) {
                     SlaveServerJobStatus status = server.getJobStatus(meta.getName(), identity, Integer.MAX_VALUE);
                     if (status.getResult() == null) { // it's possible that the job is still running
+                        logBasic(server,
+                                new StringBuilder()
+                                        .append(resourceName).append('=').append(identity)
+                                        .append(" is invalidated due to status [")
+                                        .append(status.getStatusDescription()).append(']').toString());
                         invalidate(resourceName);
                         identity = null;
                     }
                 } else if (meta instanceof TransMeta) {
                     SlaveServerTransStatus status = server.getTransStatus(meta.getName(), identity, Integer.MAX_VALUE);
                     if (status.getResult() == null) { // it's possible that the trans is still running
+                        logBasic(server,
+                                new StringBuilder()
+                                        .append(resourceName).append('=').append(identity)
+                                        .append(" is invalidated due to status [")
+                                        .append(status.getStatusDescription()).append(']').toString());
                         invalidate(resourceName);
                         identity = null;
                     }
@@ -116,10 +134,6 @@ public final class ServerCache {
             } catch (Exception e) {
                 // ignore as this is usually a network issue
             }
-        }
-
-        if (LogChannel.GENERAL.isDebug()) {
-            LogChannel.GENERAL.logDebug("-----> Get cached item: key=" + resourceName + ", value=" + identity);
         }
 
         return identity;
@@ -132,9 +146,6 @@ public final class ServerCache {
      * @param identity     identity
      */
     public static void cacheIdentity(String resourceName, String identity) {
-        if (LogChannel.GENERAL.isDebug()) {
-            LogChannel.GENERAL.logDebug("-----> Cached item: key=" + resourceName + ", value=" + identity);
-        }
         resourceCache.put(resourceName, identity);
     }
 
@@ -147,9 +158,6 @@ public final class ServerCache {
     }
 
     public static void invalidate(String resourceName) {
-        if (LogChannel.GENERAL.isDebug()) {
-            LogChannel.GENERAL.logDebug("-----> Invalidate item: key=" + resourceName);
-        }
         resourceCache.invalidate(resourceName);
     }
 
@@ -157,13 +165,13 @@ public final class ServerCache {
         resourceCache.invalidateAll();
     }
 
-    public static String dump() {
-        StringBuilder sb = new StringBuilder();
+    public static String getStats() {
+        StringBuilder sb = new StringBuilder(resourceCache.stats().toString());
 
         try {
             Map<String, String> map = resourceCache.asMap();
             for (String key : map.keySet()) {
-                sb.append(key).append(Const.CR);
+                sb.append(Const.CR).append(key);
             }
         } catch (Exception e) {
             // ignore

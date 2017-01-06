@@ -74,7 +74,7 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
         } else { // just about queries
             if (applyToAll) {
                 // keep the id empty, add information into description
-                result.setMessage(ServerCache.dump());
+                result.setMessage(ServerCache.getStats());
             } else {
                 String identity = ServerCache.getCachedIdentity(resourceName);
                 if (!Strings.isNullOrEmpty(identity)) {
