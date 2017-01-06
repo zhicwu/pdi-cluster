@@ -23,11 +23,12 @@ import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.variables.VariableSpace;
+import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.ObjectRevision;
-import org.pentaho.di.www.GetCacheStatusServlet;
-import org.pentaho.di.www.WebResult;
+import org.pentaho.di.trans.TransMeta;
+import org.pentaho.di.www.SlaveServerJobStatus;
+import org.pentaho.di.www.SlaveServerTransStatus;
 
-import java.net.URLEncoder;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -96,16 +97,24 @@ public final class ServerCache {
         String resourceName = buildResourceName(meta, params, server);
         String identity = getCachedIdentity(resourceName);
 
+        // let's see if the slave server still got this
         if (!Strings.isNullOrEmpty(identity)) {
             try {
-                String result =
-                        server.execService(new StringBuilder().append(GetCacheStatusServlet.CONTEXT_PATH)
-                                .append('/').append('?').append(GetCacheStatusServlet.PARAM_NAME).append('=')
-                                .append(URLEncoder.encode(resourceName, "UTF-8")).toString());
-                WebResult webResult = WebResult.fromXMLString(result);
-                identity = webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK) ? webResult.getId() : null;
+                if (meta instanceof JobMeta) {
+                    SlaveServerJobStatus status = server.getJobStatus(meta.getName(), identity, Integer.MAX_VALUE);
+                    if (status.getResult() == null) { // it's possible that the job is still running
+                        invalidate(resourceName);
+                        identity = null;
+                    }
+                } else if (meta instanceof TransMeta) {
+                    SlaveServerTransStatus status = server.getTransStatus(meta.getName(), identity, Integer.MAX_VALUE);
+                    if (status.getResult() == null) { // it's possible that the trans is still running
+                        invalidate(resourceName);
+                        identity = null;
+                    }
+                } // who knows if someday there's a new type...
             } catch (Exception e) {
-                // ignore what happened as this is optional
+                // ignore as this is usually a network issue
             }
         }
 
