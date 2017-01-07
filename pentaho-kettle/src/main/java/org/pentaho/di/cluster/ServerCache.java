@@ -39,10 +39,12 @@ import java.util.concurrent.TimeUnit;
  * @author Zhichun Wu
  */
 public final class ServerCache {
+    public static final boolean RESOURCE_CACHE_DISABLED = "Y".equalsIgnoreCase(
+            System.getProperty("KETTLE_RESOURCE_CACHE_DISABLED", "N"));
     public static final int RESOURCE_CACHE_SIZE
-            = Integer.parseInt(System.getProperty("RESOURCE_CACHE_SIZE", "500"));
+            = Integer.parseInt(System.getProperty("KETTLE_RESOURCE_CACHE_SIZE", "100"));
     public static final int RESOURCE_EXPIRATION_MINUTE
-            = Integer.parseInt(System.getProperty("RESOURCE_EXPIRATION_MINUTE", "780"));
+            = Integer.parseInt(System.getProperty("KETTLE_RESOURCE_EXPIRATION_MINUTE", "1800"));
     public static final String PARAM_ETL_JOB_ID = System.getProperty("KETTLE_JOB_ID_KEY", "ETL_CALLER");
 
     // On master node, it's for name -> revision + md5; on slave server, it's name -> md5
@@ -61,8 +63,12 @@ public final class ServerCache {
         }
     }
 
-    public static String buildResourceName(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
+    private static String buildResourceName(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
         StringBuilder sb = new StringBuilder();
+
+        if (RESOURCE_CACHE_DISABLED) {
+            return sb.toString();
+        }
 
         // in case this is triggered by a Quartz Job
         String jobId = params == null ? null : params.get(PARAM_ETL_JOB_ID);
@@ -98,7 +104,7 @@ public final class ServerCache {
      * @return
      */
     public static String getCachedIdentity(String resourceName) {
-        return resourceCache.getIfPresent(resourceName);
+        return RESOURCE_CACHE_DISABLED ? null : resourceCache.getIfPresent(resourceName);
     }
 
     public static String getCachedIdentity(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
@@ -146,7 +152,9 @@ public final class ServerCache {
      * @param identity     identity
      */
     public static void cacheIdentity(String resourceName, String identity) {
-        resourceCache.put(resourceName, identity);
+        if (!RESOURCE_CACHE_DISABLED) {
+            resourceCache.put(resourceName, identity);
+        }
     }
 
     public static void cacheIdentity(AbstractMeta meta, Map<String, String> params, SlaveServer server, String identity) {
