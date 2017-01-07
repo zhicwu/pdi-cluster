@@ -22,6 +22,7 @@
 
 package org.pentaho.di.www;
 
+import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.KettleEnvironment;
@@ -127,6 +128,14 @@ public class CarteSingleton {
             objectTimeout = 24 * 60; // 1440 : default is a one day time-out
         }
 
+        if (!ServerCache.RESOURCE_CACHE_DISABLED && objectTimeout <= ServerCache.RESOURCE_EXPIRATION_MINUTE) {
+            log.logBasic(new StringBuilder().append("You may want to increase ")
+                    .append(Const.KETTLE_CARTE_OBJECT_TIMEOUT_MINUTES).append(" from ")
+                    .append(objectTimeout).append(" minutes to ")
+                    .append(ServerCache.RESOURCE_EXPIRATION_MINUTE + 1)
+                    .append(" to fully utilize resource cache.").toString());
+        }
+
         // If we need to time out finished or idle objects, we should create a timer
         // in the background to clean
         //
@@ -147,28 +156,31 @@ public class CarteSingleton {
                             //
                             for (CarteObjectEntry entry : transformationMap.getTransformationObjects()) {
                                 Trans trans = transformationMap.getTransformation(entry);
+                                Date logDate = trans.getLogDate();
 
                                 // See if the transformation is finished or stopped.
                                 //
-                                if (trans != null && (trans.isFinished() || trans.isStopped()) && trans.getLogDate() != null) {
+                                if (trans != null && (trans.isFinished() || trans.isStopped()) && logDate != null) {
                                     // check the last log time
                                     //
                                     int diffInMinutes =
-                                            (int) Math.floor((System.currentTimeMillis() - trans.getLogDate().getTime()) / 60000);
+                                            (int) Math.floor((System.currentTimeMillis() - logDate.getTime()) / 60000);
                                     if (diffInMinutes >= objectTimeout) {
+                                        String logChannelId = trans.getLogChannelId();
+
                                         // Let's remove this from the transformation map...
                                         //
                                         transformationMap.removeTransformation(entry);
 
                                         // Remove the logging information from the log registry & central log store
                                         //
-                                        LoggingRegistry.getInstance().removeIncludingChildren(trans.getLogChannelId());
-                                        KettleLogStore.discardLines(trans.getLogChannelId(), false);
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+                                        KettleLogStore.discardLines(logChannelId, false);
 
                                         // transformationMap.deallocateServerSocketPorts(entry);
 
                                         log.logMinimal("Cleaned up transformation "
-                                                + entry.getName() + " with id " + entry.getId() + " from " + trans.getLogDate()
+                                                + entry.getName() + " with id " + entry.getId() + " from " + logDate
                                                 + ", diff=" + diffInMinutes);
                                     }
                                 }
@@ -178,20 +190,29 @@ public class CarteSingleton {
                             //
                             for (CarteObjectEntry entry : jobMap.getJobObjects()) {
                                 Job job = jobMap.getJob(entry);
+                                Date logDate = job.getLogDate();
 
                                 // See if the job is finished or stopped.
                                 //
-                                if (job != null && (job.isFinished() || job.isStopped()) && job.getLogDate() != null) {
+                                if (job != null && (job.isFinished() || job.isStopped()) && logDate != null) {
                                     // check the last log time
                                     //
                                     int diffInMinutes =
-                                            (int) Math.floor((System.currentTimeMillis() - job.getLogDate().getTime()) / 60000);
+                                            (int) Math.floor((System.currentTimeMillis() - logDate.getTime()) / 60000);
                                     if (diffInMinutes >= objectTimeout) {
+                                        String logChannelId = job.getLogChannelId();
+
                                         // Let's remove this from the job map...
                                         //
                                         jobMap.removeJob(entry);
+
+                                        // Remove the logging information from the log registry & central log store
+                                        //
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
+                                        KettleLogStore.discardLines(logChannelId, false);
+
                                         log.logMinimal("Cleaned up job "
-                                                + entry.getName() + " with id " + entry.getId() + " from " + job.getLogDate());
+                                                + entry.getName() + " with id " + entry.getId() + " from " + logDate);
                                     }
                                 }
                             }

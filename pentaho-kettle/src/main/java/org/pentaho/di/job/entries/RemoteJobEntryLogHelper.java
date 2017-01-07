@@ -25,7 +25,7 @@ import org.pentaho.di.core.logging.LogChannelInterface;
  */
 public final class RemoteJobEntryLogHelper {
     private static final String UNKNOWN_SERVER = "unknown server";
-    private static final String UNKNOW_OBJECT = "unknown object";
+    private static final String UNKNOWN_OBJECT = "unknown object";
 
     private final LogChannelInterface logger;
 
@@ -38,9 +38,18 @@ public final class RemoteJobEntryLogHelper {
         this.logger = logger;
 
         this.serverAddress = server == null || server.getName() == null ? UNKNOWN_SERVER : server.getName();
-        this.objectId = objectId == null ? UNKNOW_OBJECT : objectId;
+        this.objectId = objectId == null ? UNKNOWN_OBJECT : objectId;
 
         this.lastLogEntryNo = 0;
+
+        if (this.logger != null) {
+            this.logger.logBasic(new StringBuilder()
+                    .append("=== Log Replayer is ready for [")
+                    .append(this.objectId)
+                    .append('@')
+                    .append(serverAddress)
+                    .append("] ===").toString());
+        }
     }
 
     public int getLastLogEntryNo() {
@@ -53,43 +62,36 @@ public final class RemoteJobEntryLogHelper {
         }
 
         int length = logString.length();
-        int lineDiff = firstEntryLineNo - lastLogEntryNo;
 
-        if (length > 0 && lastLogEntryNo != lastEntryLineNo) {
-            try {
+        if (lastLogEntryNo != lastEntryLineNo) {
+            if (length > 0) {
                 logger.logBasic(new StringBuilder()
-                        .append("---> Replay logs L")
+                        .append("---> Replay logs from #")
                         .append(firstEntryLineNo)
-                        .append(" ~ L")
+                        .append(" to #")
                         .append(lastEntryLineNo)
-                        .append(" from [")
-                        .append(objectId)
-                        .append('@')
-                        .append(serverAddress)
-                        .append("]: ")
+                        .append(": ")
                         .append(length)
                         .append(" bytes <---").toString());
 
-                if (lineDiff != 0) {
-                    logger.logError(new StringBuffer()
-                            .append("*** Somehow we ")
-                            .append(lineDiff > 0 ? "lost " : "got duplicated ")
-                            .append(Math.abs(lineDiff))
-                            .append(" lines of logs from [")
-                            .append(objectId)
-                            .append('@')
-                            .append(serverAddress)
-                            .append("] ***")
-                            .toString());
-                }
-
                 logger.logBasic(logString);
-            } catch (Throwable t) {
-                // ignore as logging failure is trivial
-                // t.printStackTrace();
             }
-        }
 
-        lastLogEntryNo = lastEntryLineNo;
+            int lineDiff = firstEntryLineNo - lastLogEntryNo;
+
+            if (lineDiff != 0) {
+                logger.logError(new StringBuffer()
+                        .append("*** Skip ")
+                        .append(lineDiff) // could be negative
+                        .append(" lines from #")
+                        .append(firstEntryLineNo)
+                        .append(" to #")
+                        .append(lastLogEntryNo)
+                        .append(" ***")
+                        .toString());
+            }
+
+            lastLogEntryNo = lastEntryLineNo;
+        }
     }
 }

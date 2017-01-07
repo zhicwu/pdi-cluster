@@ -57,7 +57,7 @@ public class UserDefinedJavaClass extends BaseStep implements StepInterface {
 
         if (meta.cookErrors.size() > 0) {
             for (Exception e : meta.cookErrors) {
-                logErrorImpl("Error initializing UserDefinedJavaClass:", e);
+                logErrorImpl("Error initializing UserDefinedJavaClass:" + e.getMessage(), e.getCause());
             }
             setErrorsImpl(meta.cookErrors.size());
             stopAllImpl();
