@@ -234,9 +234,8 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
         if (job != null) {
             String status = job.getStatus();
             int lastLineNr = KettleLogStore.getLastBufferLineNr();
-            String logText =
-                    KettleLogStore.getAppender().getBuffer(
-                            job.getLogChannel().getLogChannelId(), false, startLineNr, lastLineNr).toString();
+            String logText = startLineNr >= lastLineNr ? "" : KettleLogStore.getAppender().getBuffer(
+                    job.getLogChannel().getLogChannelId(), false, startLineNr, lastLineNr).toString();
 
             if (useXML) {
                 response.setContentType("text/xml");

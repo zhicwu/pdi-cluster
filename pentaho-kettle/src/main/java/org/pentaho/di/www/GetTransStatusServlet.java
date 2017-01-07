@@ -239,9 +239,8 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
         if (trans != null) {
             String status = trans.getStatus();
             int lastLineNr = KettleLogStore.getLastBufferLineNr();
-            String logText =
-                    KettleLogStore.getAppender().getBuffer(
-                            trans.getLogChannel().getLogChannelId(), false, startLineNr, lastLineNr).toString();
+            String logText = startLineNr >= lastLineNr ? "" : KettleLogStore.getAppender().getBuffer(
+                    trans.getLogChannel().getLogChannelId(), false, startLineNr, lastLineNr).toString();
 
             if (useXML) {
                 response.setContentType("text/xml");
