@@ -37,7 +37,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CarteSingleton {
-
     private static Class<?> PKG = Carte.class; // for i18n purposes, needed by Translator2!!
 
     private static SlaveServerConfig slaveServerConfig;
@@ -173,8 +172,8 @@ public class CarteSingleton {
 
                                         // Remove the logging information from the log registry & central log store
                                         //
-                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                                         KettleLogStore.discardLines(logChannelId, false);
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
 
                                         // transformationMap.deallocateServerSocketPorts(entry);
 
@@ -206,8 +205,8 @@ public class CarteSingleton {
 
                                         // Remove the logging information from the log registry & central log store
                                         //
-                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                                         KettleLogStore.discardLines(logChannelId, false);
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
 
                                         log.logMinimal("Cleaned up job "
                                                 + entry.getName() + " with id " + entry.getId() + " from " + logDate);

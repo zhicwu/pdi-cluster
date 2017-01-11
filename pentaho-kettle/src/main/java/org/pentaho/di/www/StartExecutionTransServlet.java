@@ -24,6 +24,7 @@ package org.pentaho.di.www;
 
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Encoder;
+import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.xml.XMLHandler;
@@ -194,6 +195,7 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
 
             if (trans != null) {
                 if (trans.isReadyToStart()) {
+                    ServerCache.updateParametersAndCache(request, trans, id);
                     startThreads(trans);
 
                     if (useXML) {

@@ -51,6 +51,7 @@ public final class QuartzSchedulerHelper {
     static final String KEY_ETL_SCRIPT = System.getProperty("KETTLE_JOB_NAME_KEY", "ETL_SCRIPT");
     static final String KEY_ETL_JOB_ID = System.getProperty("KETTLE_JOB_ID_KEY", "ETL_CALLER");
     static final String KEY_ETL_TRACE_ID = System.getProperty("KETTLE_TRACE_ID_KEY", "UNIQUE_ID");
+    static final String KEY_ETL_REQUEST_ID = System.getProperty("KETTLE_REQUEST_ID_KEY", "REQUEST_ID");
 
     static final int KETTLE_JOB_KILLER_MAX_WAIT
             = Integer.parseInt(System.getProperty("KETTLE_JOB_KILLER_WAIT_SEC", "8000"));

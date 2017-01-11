@@ -1718,7 +1718,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
         // Align logging levels between execution configuration and remote server
         slaveServer.getLogChannel().setLogLevel(executionConfiguration.getLogLevel());
 
-        String carteObjectId = ServerCache.getCachedIdentity(jobMeta, executionConfiguration.getParams(), slaveServer);
+        Map.Entry<String, String> entry
+                = ServerCache.getCachedEntry(jobMeta, executionConfiguration.getParams(), slaveServer);
+        String carteObjectId = entry.getValue();
 
         FileObject tempFile = null;
         try {
@@ -1782,7 +1784,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
             //
             String reply =
                     slaveServer.execService(StartJobServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(jobMeta.getName(),
-                            "UTF-8") + "&xml=Y&id=" + carteObjectId);
+                            "UTF-8") + "&xml=Y&id=" + carteObjectId,
+                            ServerCache.buildRequestParameters(entry.getKey(),
+                                    executionConfiguration.getParams(), executionConfiguration.getVariables()));
             WebResult webResult = WebResult.fromXMLString(reply);
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                 ServerCache.invalidate(jobMeta, executionConfiguration.getParams(), slaveServer);
