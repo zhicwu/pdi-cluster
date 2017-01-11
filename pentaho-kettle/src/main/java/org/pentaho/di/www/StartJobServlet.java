@@ -24,6 +24,7 @@ package org.pentaho.di.www;
 
 import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Encoder;
+import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.logging.KettleLogStore;
@@ -243,6 +244,7 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
                     }
                 }
 
+                ServerCache.updateParametersAndCache(request, job, id);
                 runJob(job);
 
                 String message = BaseMessages.getString(PKG, "StartJobServlet.Log.JobStarted", jobName);

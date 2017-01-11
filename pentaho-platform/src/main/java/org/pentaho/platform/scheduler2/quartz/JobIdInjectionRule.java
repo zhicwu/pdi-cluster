@@ -23,6 +23,7 @@ import org.quartz.JobExecutionException;
 import org.quartz.Scheduler;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.*;
 
@@ -55,6 +56,7 @@ public class JobIdInjectionRule {
                 && etlScript != null) {
             jobParams.put(KEY_ETL_JOB_ID, jobKey.toString());
             jobParams.put(KEY_ETL_TRACE_ID, lineAgeId);
+            jobParams.put(KEY_ETL_REQUEST_ID, UUID.randomUUID().toString());
         }
     }
 }

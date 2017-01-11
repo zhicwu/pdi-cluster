@@ -174,8 +174,8 @@ public class CarteSingleton {
 
                                         // Remove the logging information from the log registry & central log store
                                         //
-                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                                         KettleLogStore.discardLines(logChannelId, false);
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
 
                                         // transformationMap.deallocateServerSocketPorts(entry);
 
@@ -208,8 +208,8 @@ public class CarteSingleton {
 
                                         // Remove the logging information from the log registry & central log store
                                         //
-                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
                                         KettleLogStore.discardLines(logChannelId, false);
+                                        LoggingRegistry.getInstance().removeIncludingChildren(logChannelId);
 
                                         log.logMinimal("Cleaned up job "
                                                 + entry.getName() + " with id " + entry.getId() + " from " + logDate);

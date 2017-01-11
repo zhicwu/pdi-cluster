@@ -21,15 +21,24 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.logging.LogChannelInterface;
+import org.pentaho.di.core.parameters.NamedParams;
+import org.pentaho.di.core.parameters.UnknownParamException;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.ObjectRevision;
 import org.pentaho.di.trans.TransMeta;
+import org.pentaho.di.www.GetCacheStatusServlet;
 import org.pentaho.di.www.SlaveServerJobStatus;
 import org.pentaho.di.www.SlaveServerTransStatus;
+import org.pentaho.di.www.WebResult;
 
+import javax.servlet.http.HttpServletRequest;
+import java.net.URLEncoder;
+import java.util.AbstractMap;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +55,9 @@ public final class ServerCache {
     public static final int RESOURCE_EXPIRATION_MINUTE
             = Integer.parseInt(System.getProperty("KETTLE_RESOURCE_EXPIRATION_MINUTE", "1800"));
     public static final String PARAM_ETL_JOB_ID = System.getProperty("KETTLE_JOB_ID_KEY", "ETL_CALLER");
+
+    static final String KEY_ETL_CACHE_ID = System.getProperty("KETTLE_CACHE_ID_KEY", "CACHE_ID");
+    static final String KEY_ETL_REQUEST_ID = System.getProperty("KETTLE_REQUEST_ID_KEY", "REQUEST_ID");
 
     // On master node, it's for name -> revision + md5; on slave server, it's name -> md5
     private static final Cache<String, String> resourceCache = CacheBuilder.newBuilder()
@@ -97,6 +109,55 @@ public final class ServerCache {
         return sb.append('@').append(host).append(':').append(port).toString();
     }
 
+    public static Map<String, String> buildRequestParameters(String resourceName,
+                                                             Map<String, String> params,
+                                                             Map<String, String> vars) {
+        Map<String, String> map = new HashMap<String, String>();
+
+        if (!Strings.isNullOrEmpty(resourceName)) {
+            map.put(KEY_ETL_CACHE_ID, resourceName);
+        }
+
+        if (params != null) {
+            String requestId = params.get(KEY_ETL_REQUEST_ID);
+            if (!Strings.isNullOrEmpty(requestId)) {
+                map.put(KEY_ETL_REQUEST_ID, requestId);
+            }
+        }
+
+        if (vars != null) {
+            String requestId = vars.get(KEY_ETL_REQUEST_ID);
+            if (!Strings.isNullOrEmpty(requestId)) {
+                map.put(KEY_ETL_REQUEST_ID, requestId);
+            }
+        }
+
+        LogChannel.GENERAL.logError("=====> Request Parameters: " + map.toString());
+
+        return map;
+    }
+
+    public static void updateParametersAndCache(HttpServletRequest request, NamedParams params, String carteObjectId) {
+        String cacheId = request == null ? null : request.getHeader(KEY_ETL_CACHE_ID);
+        String requestId = request == null ? null : request.getHeader(KEY_ETL_REQUEST_ID);
+
+        LogChannel.GENERAL.logError(
+                "=====> cacheId=" + cacheId + ", requetId=" + requestId + ", carteId=" + carteObjectId);
+
+        if (!Strings.isNullOrEmpty(requestId)) {
+            try {
+                params.setParameterValue(KEY_ETL_REQUEST_ID, requestId);
+            } catch (UnknownParamException e) {
+                // this should not happen
+            }
+        }
+
+        // update cache
+        if (!Strings.isNullOrEmpty(cacheId) && !Strings.isNullOrEmpty(carteObjectId)) {
+            cacheIdentity(cacheId, carteObjectId);
+        }
+    }
+
     /**
      * Retrieve a unique id generated for the given resource if it's been cached.
      *
@@ -107,9 +168,25 @@ public final class ServerCache {
         return RESOURCE_CACHE_DISABLED ? null : resourceCache.getIfPresent(resourceName);
     }
 
-    public static String getCachedIdentity(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
+    public static Map.Entry<String, String> getCachedEntry(
+            AbstractMeta meta, Map<String, String> params, SlaveServer server) {
         String resourceName = buildResourceName(meta, params, server);
         String identity = getCachedIdentity(resourceName);
+
+        if (Strings.isNullOrEmpty(identity)) {
+            // don't give up so quick as this might be cached on slave server
+            try {
+                String reply =
+                        server.execService(GetCacheStatusServlet.CONTEXT_PATH + "/?name="
+                                + URLEncoder.encode(resourceName, "UTF-8"));
+                WebResult webResult = WebResult.fromXMLString(reply);
+                if (webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
+                    identity = webResult.getId();
+                }
+            } catch (Exception e) {
+                // ignore as this is usually a network issue
+            }
+        }
 
         // let's see if the slave server still got this
         if (!Strings.isNullOrEmpty(identity)) {
@@ -142,7 +219,7 @@ public final class ServerCache {
             }
         }
 
-        return identity;
+        return new AbstractMap.SimpleImmutableEntry<String, String>(resourceName, identity);
     }
 
     /**

@@ -4132,7 +4132,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             throw new KettleException("The transformation needs a name to uniquely identify it by on the remote server.");
         }
 
-        String carteObjectId = ServerCache.getCachedIdentity(transMeta, executionConfiguration.getParams(), slaveServer);
+        Map.Entry<String, String> entry =
+                ServerCache.getCachedEntry(transMeta, executionConfiguration.getParams(), slaveServer);
+        String carteObjectId = entry.getValue();
 
         FileObject tempFile = null;
         try {
@@ -4219,7 +4221,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             //
             reply =
                     slaveServer.execService(StartExecutionTransServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(transMeta
-                            .getName(), "UTF-8") + "&xml=Y&id=" + carteObjectId);
+                                    .getName(), "UTF-8") + "&xml=Y&id=" + carteObjectId,
+                            ServerCache.buildRequestParameters(entry.getKey(),
+                                    executionConfiguration.getParams(), executionConfiguration.getVariables()));
             webResult = WebResult.fromXMLString(reply);
 
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
