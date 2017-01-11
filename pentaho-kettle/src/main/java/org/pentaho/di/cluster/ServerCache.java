@@ -21,7 +21,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
-import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.logging.LogChannelInterface;
 import org.pentaho.di.core.parameters.NamedParams;
 import org.pentaho.di.core.parameters.UnknownParamException;
@@ -132,23 +131,25 @@ public final class ServerCache {
             }
         }
 
-        LogChannel.GENERAL.logError("=====> Request Parameters: " + map.toString());
-
         return map;
     }
 
-    public static void updateParametersAndCache(HttpServletRequest request, NamedParams params, String carteObjectId) {
+    public static void updateParametersAndCache(HttpServletRequest request,
+                                                NamedParams params,
+                                                VariableSpace vars,
+                                                String carteObjectId) {
         String cacheId = request == null ? null : request.getHeader(KEY_ETL_CACHE_ID);
         String requestId = request == null ? null : request.getHeader(KEY_ETL_REQUEST_ID);
-
-        LogChannel.GENERAL.logError(
-                "=====> cacheId=" + cacheId + ", requetId=" + requestId + ", carteId=" + carteObjectId);
 
         if (!Strings.isNullOrEmpty(requestId)) {
             try {
                 params.setParameterValue(KEY_ETL_REQUEST_ID, requestId);
             } catch (UnknownParamException e) {
                 // this should not happen
+            }
+
+            if (vars != null) {
+                vars.setVariable(KEY_ETL_REQUEST_ID, requestId);
             }
         }
 
@@ -182,6 +183,9 @@ public final class ServerCache {
                 WebResult webResult = WebResult.fromXMLString(reply);
                 if (webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                     identity = webResult.getId();
+                    logBasic(server,
+                            new StringBuilder().append("Found ").append(resourceName).append('=').append(identity)
+                                    .append(" on remote slave server").toString());
                 }
             } catch (Exception e) {
                 // ignore as this is usually a network issue

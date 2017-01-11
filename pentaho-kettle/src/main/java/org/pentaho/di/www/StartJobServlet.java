@@ -243,7 +243,7 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
                     }
                 }
 
-                ServerCache.updateParametersAndCache(request, job, id);
+                ServerCache.updateParametersAndCache(request, job, job, id);
                 runJob(job);
 
                 String message = BaseMessages.getString(PKG, "StartJobServlet.Log.JobStarted", jobName);

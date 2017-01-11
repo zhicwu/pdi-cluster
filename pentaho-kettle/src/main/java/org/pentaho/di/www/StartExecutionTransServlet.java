@@ -195,7 +195,7 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
 
             if (trans != null) {
                 if (trans.isReadyToStart()) {
-                    ServerCache.updateParametersAndCache(request, trans, id);
+                    ServerCache.updateParametersAndCache(request, trans, trans, id);
                     startThreads(trans);
 
                     if (useXML) {
