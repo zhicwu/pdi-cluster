@@ -88,6 +88,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
     public static final String CONFIGURATION_IN_EXPORT_FILENAME = "__job_execution_configuration__.xml";
 
+    public static final long MAX_JOB_DURATION_MS // by default, every job must be completed within 4 hours
+            = Integer.parseInt(System.getProperty("KETTLE_MAX_JOB_DURATION_MS", "14400000"));
+
     private LogChannelInterface log;
 
     private LogLevel logLevel = DefaultLogLevel.getLogLevel();
@@ -904,7 +907,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
      */
     public void waitUntilFinished(long maxMiliseconds) {
         long time = 0L;
-        while (isAlive() && (time < maxMiliseconds || maxMiliseconds <= 0)) {
+        maxMiliseconds =
+                maxMiliseconds <= 0 || maxMiliseconds > MAX_JOB_DURATION_MS ? MAX_JOB_DURATION_MS : maxMiliseconds;
+        while (isAlive() && (time < maxMiliseconds)) {
             try {
                 Thread.sleep(1);
                 time += 1;

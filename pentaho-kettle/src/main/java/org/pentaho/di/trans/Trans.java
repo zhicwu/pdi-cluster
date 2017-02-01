@@ -103,6 +103,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
     private static final boolean KETTLE_TRANS_PREVIEW_DISABLED
             = "Y".equalsIgnoreCase(System.getProperty("KETTLE_TRANS_PREVIEW_DISABLED", "Y"));
 
+    private static final long MAX_TRANS_DURATION_MS // by default, every trans must be completed within 4 hours
+            = Integer.parseInt(System.getProperty("KETTLE_MAX_TRANS_DURATION_MS", "14400000"));
+
     /**
      * The replay date format.
      */
@@ -1623,7 +1626,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             }
             boolean wait = true;
             while (wait) {
-                wait = transFinishedBlockingQueue.poll(1, TimeUnit.DAYS) == null;
+                wait = transFinishedBlockingQueue.poll(MAX_TRANS_DURATION_MS, TimeUnit.MILLISECONDS) == null;
             }
         } catch (InterruptedException e) {
             throw new RuntimeException("Waiting for transformation to be finished interrupted!", e);
