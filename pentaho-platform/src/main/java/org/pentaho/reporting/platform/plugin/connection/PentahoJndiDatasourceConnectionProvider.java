@@ -36,6 +36,14 @@ public class PentahoJndiDatasourceConnectionProvider implements ConnectionProvid
     private String username;
     private String password;
 
+    private synchronized void updateProperties(IDatabaseConnection dbConn) {
+        if (dbConn != null) {
+            this.jndiName = dbConn.getName();
+            this.username = dbConn.getUsername();
+            this.password = dbConn.getPassword();
+        }
+    }
+
     /*
      * Default constructor
      */
@@ -55,8 +63,8 @@ public class PentahoJndiDatasourceConnectionProvider implements ConnectionProvid
         final IDBDatasourceService datasourceService = PentahoSystem.get(IDBDatasourceService.class, null);
 
         try {
-            IDatabaseConnection dbConn = PooledDatasourceHelper.findUnderlyingDBConnection(jndiName);
-            final DataSource dataSource = datasourceService.getDataSource(dbConn == null ? jndiName : dbConn.getName());
+            updateProperties(PooledDatasourceHelper.findUnderlyingDBConnection(jndiName));
+            final DataSource dataSource = datasourceService.getDataSource(jndiName);
             if (dataSource != null) {
                 final String realUser;
                 final String realPassword;
