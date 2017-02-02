@@ -18,6 +18,7 @@
 
 package org.pentaho.platform.engine.services.connection.datasource.dbcp;
 
+import com.google.common.base.Strings;
 import org.apache.commons.dbcp.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -34,6 +35,7 @@ import org.pentaho.platform.api.data.DBDatasourceServiceException;
 import org.pentaho.platform.api.data.IDBDatasourceService;
 import org.pentaho.platform.api.engine.ICacheManager;
 import org.pentaho.platform.api.engine.ILogger;
+import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.services.messages.Messages;
@@ -45,10 +47,47 @@ import org.springframework.transaction.annotation.Isolation;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 public class PooledDatasourceHelper {
+
+    public static IDatabaseConnection findUnderlyingDBConnection(String dsName) throws DBDatasourceServiceException {
+        final IDatasourceMgmtService dmService = PentahoSystem.get(IDatasourceMgmtService.class, null);
+        final IDBDatasourceService dsService = PentahoSystem.get(IDBDatasourceService.class, null);
+
+        final Set<String> names = new HashSet<>(3);
+        names.add(dsName);
+
+        return findUnderlyingDBConnection(dmService, names, dsName);
+    }
+
+    public static IDatabaseConnection findUnderlyingDBConnection(final IDatasourceMgmtService dmService,
+                                                                 final Set<String> names, String dsName) {
+        IDatabaseConnection dbConn = null;
+
+        if (dmService != null) {
+            try {
+                dbConn = dmService.getDatasourceByName(dsName);
+            } catch (Exception e) {
+                // pretend nothing happened
+            }
+
+            if (dbConn != null) {
+                // FIXME what if the name contains parameter?
+                String name = dbConn.getDatabaseName();
+                if (dbConn.getAccessType() == DatabaseAccessType.JNDI
+                        && !Strings.isNullOrEmpty(name) && !names.contains(name)) {
+                    names.add(name);
+                    return findUnderlyingDBConnection(dmService, names, name);
+                }
+            }
+        }
+
+        return dbConn;
+    }
 
     public static PoolingDataSource setupPooledDataSource(IDatabaseConnection databaseConnection)
             throws DBDatasourceServiceException {
@@ -347,7 +386,6 @@ public class PooledDatasourceHelper {
     }
 
     public static DataSource getJndiDataSource(final String dsName) throws DBDatasourceServiceException {
-
         try {
             InitialContext ctx = new InitialContext();
             Object lkup = null;
@@ -393,6 +431,23 @@ public class PooledDatasourceHelper {
             } catch (NamingException ignored) {
                 // ignored
             }
+
+            // FIXME this introduces unnecessary dependency in Platform, which is not good...
+            try {
+                IDatabaseConnection dbConn = findUnderlyingDBConnection(dsName);
+                if (dbConn != null) {
+                    // hopefully we can get pooled data source from cache...
+                    final ICacheManager cacheManager = PentahoSystem.getCacheManager(null);
+                    Object cached = cacheManager.getFromRegionCache(IDBDatasourceService.JDBC_POOL, dbConn.getName());
+
+                    rtn = cached instanceof GenericObjectPool
+                            ? (DataSource) ((GenericObjectPool) cached).borrowObject() : convert(dbConn);
+                    return rtn;
+                }
+            } catch (Exception ignored) {
+                // ignored
+            }
+
             if (firstNe != null) {
                 throw new DBDatasourceServiceException(firstNe);
             }

@@ -17,13 +17,10 @@
 
 package org.pentaho.reporting.platform.plugin.connection;
 
-import com.google.common.base.Strings;
-import org.pentaho.database.model.DatabaseAccessType;
 import org.pentaho.database.model.IDatabaseConnection;
 import org.pentaho.platform.api.data.IDBDatasourceService;
-import org.pentaho.platform.api.engine.ObjectFactoryException;
-import org.pentaho.platform.api.repository.datasource.IDatasourceMgmtService;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.engine.services.connection.datasource.dbcp.PooledDatasourceHelper;
 import org.pentaho.reporting.engine.classic.core.modules.misc.datafactory.sql.ConnectionProvider;
 
 import javax.sql.DataSource;
@@ -55,19 +52,11 @@ public class PentahoJndiDatasourceConnectionProvider implements ConnectionProvid
      * @throws java.sql.SQLException
      */
     public Connection createConnection(final String user, final String password) throws SQLException {
+        final IDBDatasourceService datasourceService = PentahoSystem.get(IDBDatasourceService.class, null);
+
         try {
-            IDatasourceMgmtService dmService = PentahoSystem.get(IDatasourceMgmtService.class, null);
-            IDatabaseConnection dbConn = dmService == null ? null : dmService.getDatasourceByName(jndiName);
-
-            if (dbConn != null && dbConn.getAccessType() == DatabaseAccessType.JNDI
-                    && !Strings.isNullOrEmpty(dbConn.getDatabaseName())) {
-                // FIXME this is probably too tricky... let's do it just once for each call to avoid endless-loop
-                jndiName = dbConn.getDatabaseName();
-            }
-
-            final IDBDatasourceService datasourceService =
-                    PentahoSystem.getObjectFactory().get(IDBDatasourceService.class, null);
-            final DataSource dataSource = datasourceService.getDataSource(jndiName);
+            IDatabaseConnection dbConn = PooledDatasourceHelper.findUnderlyingDBConnection(jndiName);
+            final DataSource dataSource = datasourceService.getDataSource(dbConn == null ? jndiName : dbConn.getName());
             if (dataSource != null) {
                 final String realUser;
                 final String realPassword;
@@ -125,22 +114,12 @@ public class PentahoJndiDatasourceConnectionProvider implements ConnectionProvid
                         "PentahoDatasourceConnectionProvider.ERROR_0001_INVALID_CONNECTION", jndiName)); //$NON-NLS-1$
             }
         } catch (Exception e) {
-            try {
-                final IDBDatasourceService datasourceService =
-                        PentahoSystem.getObjectFactory().get(IDBDatasourceService.class, null);
-                datasourceService.clearDataSource(jndiName);
-                throw new SQLException(
-                        Messages
-                                .getInstance()
-                                .getErrorString(
-                                        "PentahoDatasourceConnectionProvider.ERROR_0002_UNABLE_TO_FACTORY_OBJECT", jndiName, e.getLocalizedMessage()), e); //$NON-NLS-1$
-            } catch (ObjectFactoryException objface) {
-                throw new SQLException(
-                        Messages
-                                .getInstance()
-                                .getErrorString(
-                                        "PentahoDatasourceConnectionProvider.ERROR_0002_UNABLE_TO_FACTORY_OBJECT", jndiName, e.getLocalizedMessage()), e); //$NON-NLS-1$
-            }
+            datasourceService.clearDataSource(jndiName);
+            throw new SQLException(
+                    Messages
+                            .getInstance()
+                            .getErrorString(
+                                    "PentahoDatasourceConnectionProvider.ERROR_0002_UNABLE_TO_FACTORY_OBJECT", jndiName, e.getLocalizedMessage()), e); //$NON-NLS-1$
         }
     }
 
