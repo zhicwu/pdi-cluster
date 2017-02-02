@@ -15,12 +15,23 @@
     <properties>
         <main.basedir>${project.parent.basedir}</main.basedir>
         <quartz.version>1.7.2</quartz.version>
+        <spring.version>4.3.2.RELEASE</spring.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>pentaho</groupId>
             <artifactId>pentaho-platform-api</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-reporting-engine</groupId>
+            <artifactId>pentaho-reporting-engine-classic-core</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-reporting-engine</groupId>
+            <artifactId>pentaho-reporting-engine-classic-core-platform-plugin</artifactId>
             <version>${pentaho-ce.version}</version>
         </dependency>
         <dependency>
@@ -34,9 +45,29 @@
             <version>${pentaho-ce.version}</version>
         </dependency>
         <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-core</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>pentaho-kettle</groupId>
+            <artifactId>kettle-engine</artifactId>
+            <version>${pentaho-ce.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
             <version>${quartz.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <version>${spring.version}</version>
         </dependency>
     </dependencies>
     <licenses>

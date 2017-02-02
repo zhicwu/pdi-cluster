@@ -79,6 +79,10 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
                 String identity = ServerCache.getCachedIdentity(resourceName);
                 if (!Strings.isNullOrEmpty(identity)) {
                     result.setId(identity);
+                } else {
+                    result.setResult(WebResult.STRING_ERROR);
+                    result.setMessage(
+                            new StringBuilder().append('[').append(resourceName).append("] not found").toString());
                 }
             }
         }
