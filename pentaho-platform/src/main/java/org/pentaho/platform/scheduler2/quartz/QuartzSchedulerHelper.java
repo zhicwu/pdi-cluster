@@ -68,7 +68,8 @@ public final class QuartzSchedulerHelper {
     static final long KETTLE_JOB_MAX_DURATION
             = Long.parseLong(System.getProperty("KETTLE_JOB_MAX_DURATION", String.valueOf(4 * 60 * 60 * 1000)));
 
-    static final Set<String> IGNORABLE_KEYS = new HashSet<>(Arrays.asList(KEY_ETL_JOB_ID, KEY_ETL_TRACE_ID));
+    static final Set<String> IGNORABLE_KEYS
+            = new HashSet<>(Arrays.asList(KEY_ETL_JOB_ID, KEY_ETL_TRACE_ID, KEY_ETL_REQUEST_ID));
 
     static String extractString(Map map, String key) {
         return extractString(map, key, null);
