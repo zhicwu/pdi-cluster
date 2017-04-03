@@ -26,7 +26,6 @@ import org.pentaho.di.core.parameters.NamedParams;
 import org.pentaho.di.core.parameters.UnknownParamException;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.job.JobMeta;
-import org.pentaho.di.repository.ObjectRevision;
 import org.pentaho.di.trans.TransMeta;
 import org.pentaho.di.www.GetCacheStatusServlet;
 import org.pentaho.di.www.SlaveServerJobStatus;
@@ -93,9 +92,12 @@ public final class ServerCache {
             sb.append(jobId.replace('\t', '-'));
         }
 
-        ObjectRevision revision = meta == null ? null : meta.getObjectRevision();
-        Date creationDate = revision == null ? null : revision.getCreationDate();
-        sb.append('-').append(creationDate == null ? -1 : creationDate.getTime());
+        Date modifiedDate = meta.getModifiedDate();
+        Date creationDate = meta.getCreatedDate();
+        sb.append('-').append(
+                (modifiedDate != null && creationDate != null && modifiedDate.after(creationDate))
+                        ? modifiedDate.getTime()
+                        : (creationDate == null ? -1 : creationDate.getTime()));
 
         String host = server == null ? null : server.getHostname();
         String port = server == null ? null : server.getPort();

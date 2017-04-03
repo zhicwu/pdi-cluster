@@ -72,6 +72,9 @@ import static org.pentaho.di.cluster.ServerCache.PARAM_ETL_JOB_ID;
 public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInterface {
     private static Class<?> PKG = JobEntryJob.class; // for i18n purposes, needed by Translator2!!
 
+    private static final long JOB_QUERY_INTERVAL_MS // by default, query job status every 3 seconds
+            = Long.parseLong(System.getProperty("KETTLE_JOB_QUERY_INTERVAL_MS", "3000"));
+
     private String filename;
     private String jobname;
     private String directory;
@@ -973,10 +976,9 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             // come back on-line
                         }
 
-                        // FIXME why the hell JobEntryTrans sleeps two seconds instead of one
                         // sleep for 1 second
                         try {
-                            Thread.sleep(1000);
+                            Thread.sleep(JOB_QUERY_INTERVAL_MS);
                         } catch (InterruptedException e) {
                             // Ignore
                         }
