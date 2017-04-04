@@ -185,6 +185,8 @@ public final class ServerCache {
                 WebResult webResult = WebResult.fromXMLString(reply);
                 if (webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                     identity = webResult.getId();
+                    // cache the missing entry in local to reduce future network calls
+                    cacheIdentity(resourceName, identity);
                     logBasic(server,
                             new StringBuilder()
                                     .append("Found ").append(resourceName).append('=').append(identity)
