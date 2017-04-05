@@ -26,6 +26,7 @@ import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Encoder;
 import org.pentaho.di.cluster.HttpUtil;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.core.Result;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.gui.Point;
 import org.pentaho.di.core.logging.KettleLogStore;
@@ -34,12 +35,14 @@ import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.Job;
 
+import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 
 public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginInterface {
     private static Class<?> PKG = GetJobStatusServlet.class; // for i18n purposes, needed by Translator2!!
@@ -184,6 +187,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
         String jobName = request.getParameter("name");
         String id = request.getParameter("id");
         boolean useXML = "Y".equalsIgnoreCase(request.getParameter("xml"));
+        boolean includeResult = useXML && "Y".equalsIgnoreCase(request.getParameter("result"));
         boolean autoRefresh = "Y".equalsIgnoreCase(request.getParameter("refresh"));
         boolean showImage = "Y".equalsIgnoreCase(request.getParameter("image"));
         int startLineNr = Const.toInt(request.getParameter("from"), 0);
@@ -254,12 +258,20 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
 
                 // Also set the result object...
                 //
-                jobStatus.setResult(job.getResult()); // might be null
+                Result jobResult = job.getResult();
+                if (!includeResult && jobResult != null){
+                    jobResult.setRows(new ArrayList<>(0));
+                }
+
+                jobStatus.setResult(jobResult); // might be null
 
                 try {
                     out.println(jobStatus.getXML());
                 } catch (KettleException e) {
-                    throw new ServletException("Unable to get the job status in XML format", e);
+                    ServletException exp = new ServletException("Unable to get the job status in XML format", e);
+                    logError(exp.getMessage(), exp.getCause());
+                    exp.printStackTrace();
+                    throw exp;
                 }
             } else {
                 response.setContentType("text/html");
