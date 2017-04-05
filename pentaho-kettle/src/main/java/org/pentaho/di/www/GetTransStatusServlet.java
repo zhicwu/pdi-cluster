@@ -26,6 +26,7 @@ import org.owasp.esapi.ESAPI;
 import org.owasp.esapi.Encoder;
 import org.pentaho.di.cluster.HttpUtil;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.core.Result;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.gui.Point;
 import org.pentaho.di.core.logging.KettleLogStore;
@@ -43,6 +44,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 
 public class GetTransStatusServlet extends BaseHttpServlet implements CartePluginInterface {
     private static Class<?> PKG = GetTransStatusServlet.class; // for i18n purposes, needed by Translator2!!
@@ -197,6 +199,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
         String transName = request.getParameter("name");
         String id = request.getParameter("id");
         boolean useXML = "Y".equalsIgnoreCase(request.getParameter("xml"));
+        boolean includeResult = useXML && "Y".equalsIgnoreCase(request.getParameter("result"));
         boolean autoRefresh = "Y".equalsIgnoreCase(request.getParameter("refresh"));
         int startLineNr = Const.toInt(request.getParameter("from"), 0);
 
@@ -267,7 +270,12 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
 
                 // Also set the result object...
                 //
-                transStatus.setResult(trans.getResult());
+                Result transResult = trans.getResult();
+                if (!includeResult && transResult != null){
+                    transResult.setRows(new ArrayList<>(0));
+                }
+
+                transStatus.setResult(transResult); // might be null
 
                 // Is the transformation paused?
                 //
@@ -278,7 +286,10 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 try {
                     out.println(transStatus.getXML());
                 } catch (KettleException e) {
-                    throw new ServletException("Unable to get the transformation status in XML format", e);
+                    ServletException exp = new ServletException("Unable to get the transformation status in XML format", e);
+                    logError(exp.getMessage(), exp.getCause());
+                    exp.printStackTrace();
+                    throw exp;
                 }
             } else {
                 response.setContentType("text/html;charset=UTF-8");
