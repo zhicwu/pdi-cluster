@@ -22,6 +22,7 @@
 
 package org.pentaho.di.www;
 
+import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.exception.KettlePluginException;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.logging.LogChannelInterface;
@@ -37,10 +38,27 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.*;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CarteServlet extends HttpServlet {
+    static final class MasterServer extends SlaveServer {
+        private final List<SlaveServerDetection> detections;
+
+        MasterServer() {
+            super();
+
+            this.detections = new CopyOnWriteArrayList<SlaveServerDetection>();
+        }
+
+        @Override
+        public List<SlaveServerDetection> getSlaveServerDetections() throws Exception {
+            return this.detections;
+        }
+    }
 
     private static final long serialVersionUID = 2434694833497859776L;
 
@@ -92,7 +110,9 @@ public class CarteServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         cartePluginRegistry = new ConcurrentHashMap<String, CartePluginInterface>();
-        detections = Collections.synchronizedList(new ArrayList<SlaveServerDetection>());
+        MasterServer master = new MasterServer();
+        CarteSingleton.getSlaveServerConfig().setSlaveServer(master);
+        detections = master.detections;
 
         PluginRegistry pluginRegistry = PluginRegistry.getInstance();
         List<PluginInterface> plugins = pluginRegistry.getPlugins(CartePluginType.class);

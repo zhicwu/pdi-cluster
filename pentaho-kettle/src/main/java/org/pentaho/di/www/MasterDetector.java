@@ -238,7 +238,10 @@ final class MasterDetector implements Runnable {
             // This doesn't have to be the same pair as the one used on the master!
             //
             try {
-                SlaveServerDetection slaveServerDetection = new SlaveServerDetection(slaveServer.getClient());
+                // FIXME: it might be better to pass slaveServer instead of its copy
+                SlaveServer copy = slaveServer.getClient();
+                copy.setName(slaveServer.getName());
+                SlaveServerDetection slaveServerDetection = new SlaveServerDetection(copy);
                 master.sendXML(slaveServerDetection.getXML(), RegisterSlaveServlet.CONTEXT_PATH + "/");
                 log.logBasic("Registered this slave server to master slave server [" + master.toString() + "] on address ["
                         + master.getServerAndPort() + "]");
