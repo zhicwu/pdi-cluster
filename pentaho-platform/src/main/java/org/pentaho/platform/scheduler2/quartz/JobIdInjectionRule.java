@@ -38,13 +38,21 @@ public class JobIdInjectionRule {
     private static final Log logger = LogFactory.getLog(JobIdInjectionRule.class);
 
     void applyRule(Phase phase, Scheduler scheduler, JobDetail jobDetail) throws JobExecutionException {
+        JobDataMap params = jobDetail.getJobDataMap();
+        /*
+        StringBuilder sb = new StringBuilder();
+        for(Object key : params.keySet()) {
+            Object value = params.get(key);
+            sb.append("\t* ").append(key).append('=').append(value).append('/')
+                    .append(value == null ? "<null>" : value.getClass().getName()).append('\n');
+        }
+        logger.error(sb.toString());
+        */
         QuartzJobKey jobKey = extractJobKey(jobDetail);
 
         if (scheduler == null || jobKey == null) {
             return;
         }
-
-        JobDataMap params = jobDetail.getJobDataMap();
 
         String actionId = params.getString(QuartzScheduler.RESERVEDMAPKEY_ACTIONID);
         String lineAgeId = params.getString(QuartzScheduler.RESERVEDMAPKEY_LINEAGE_ID);

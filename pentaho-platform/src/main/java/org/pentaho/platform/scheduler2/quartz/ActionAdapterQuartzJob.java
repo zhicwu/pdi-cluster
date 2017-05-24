@@ -77,6 +77,15 @@ public class ActionAdapterQuartzJob implements Job {
         Class<?> clazz = null;
 
         if (StringUtils.isEmpty(actionId) && StringUtils.isEmpty(actionClass)) {
+            /*
+            StringBuilder sb = new StringBuilder();
+            for(Object key : jobDataMap.keySet()) {
+                Object value = jobDataMap.get(key);
+                sb.append("\t* ").append(key).append('=').append(value).append('/')
+                        .append(value == null ? "<null>" : value.getClass().getName()).append('\n');
+            }
+            log.error(sb.toString());
+            */
             throw new LoggingJobExecutionException(Messages.getInstance().getErrorString(
                     "ActionAdapterQuartzJob.ERROR_0001_REQUIRED_PARAM_MISSING", //$NON-NLS-1$
                     QuartzScheduler.RESERVEDMAPKEY_ACTIONCLASS, QuartzScheduler.RESERVEDMAPKEY_ACTIONID));

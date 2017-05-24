@@ -114,5 +114,12 @@ public final class QuartzSchedulerHelper {
         JobIdInjectionRule.instance.applyRule(phase, scheduler, jobDetail);
 
         ExclusiveKettleJobRule.instance.applyRule(phase, scheduler, jobDetail, context);
+
+        /* in case any changes made to job data map(and also fix missing action id in the merged map)
+        JobDataMap detailMap = jobDetail == null ? null : jobDetail.getJobDataMap();
+        if (context != null && detailMap != null) {
+            context.getMergedJobDataMap().putAll(detailMap);
+        }
+        */
     }
 }
