@@ -22,8 +22,7 @@
 
 package org.pentaho.di.www;
 
-import org.owasp.esapi.ESAPI;
-import org.owasp.esapi.Encoder;
+import org.owasp.encoder.Encode;
 import org.pentaho.di.cluster.HttpUtil;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.Result;
@@ -237,8 +236,6 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
             trans = getTransformationMap().getTransformation(entry);
         }
 
-        Encoder encoder = ESAPI.encoder();
-
         if (trans != null) {
             String status = trans.getStatus();
             int lastLineNr = KettleLogStore.getLastBufferLineNr();
@@ -271,7 +268,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 // Also set the result object...
                 //
                 Result transResult = trans.getResult();
-                if (!includeResult && transResult != null){
+                if (!includeResult && transResult != null) {
                     transResult.setRows(new ArrayList<>(0));
                 }
 
@@ -307,8 +304,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 out.println("</HEAD>");
                 out.println("<BODY>");
                 out.println("<H1>"
-                        + encoder
-                        .encodeForHTML(BaseMessages.getString(PKG, "TransStatusServlet.TopTransStatus", transName))
+                        + Encode.forHtml(BaseMessages.getString(PKG, "TransStatusServlet.TopTransStatus", transName))
                         + "</H1>");
 
                 try {
@@ -319,9 +315,9 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                             + BaseMessages.getString(PKG, "TransStatusServlet.TransStatus") + "</th> </tr>");
 
                     out.print("<tr>");
-                    out.print("<td>" + encoder.encodeForHTML(transName) + "</td>");
-                    out.print("<td>" + encoder.encodeForHTML(id) + "</td>");
-                    out.print("<td>" + encoder.encodeForHTML(status) + "</td>");
+                    out.print("<td>" + Encode.forHtml(transName) + "</td>");
+                    out.print("<td>" + Encode.forHtml(id) + "</td>");
+                    out.print("<td>" + Encode.forHtml(status) + "</td>");
                     out.print("</tr>");
                     out.print("</table>");
 
@@ -399,7 +395,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                                                 + URLEncoder.encode(transName, "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
                                                 + "&lines=50" + "&copynr=" + step.getCopy() + "&type=" + SniffStepServlet.TYPE_OUTPUT
                                                 + "&step=" + URLEncoder.encode(step.getStepname(), "UTF-8") + "\">"
-                                                + encoder.encodeForHTML(stepStatus.getStepname()) + "</a>";
+                                                + Encode.forHtml(stepStatus.getStepname()) + "</a>";
                                 stepStatus.setStepname(sniffLink);
                             }
 
@@ -427,7 +423,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                     out
                             .println("<textarea id=\"translog\" cols=\"120\" rows=\"20\" "
                                     + "wrap=\"off\" name=\"Transformation log\" readonly=\"readonly\">"
-                                    + encoder.encodeForHTML(logText) + "</textarea>");
+                                    + Encode.forHtml(logText) + "</textarea>");
 
                     out.println("<script type=\"text/javascript\"> ");
                     out.println("  translog.scrollTop=translog.scrollHeight; ");
@@ -436,7 +432,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                 } catch (Exception ex) {
                     out.println("<p>");
                     out.println("<pre>");
-                    out.println(encoder.encodeForHTML(Const.getStackTracker(ex)));
+                    out.println(Encode.forHtml(Const.getStackTracker(ex)));
                     out.println("</pre>");
                 }
 
@@ -450,7 +446,7 @@ public class GetTransStatusServlet extends BaseHttpServlet implements CartePlugi
                         PKG, "TransStatusServlet.Log.CoundNotFindSpecTrans", transName)));
             } else {
                 out.println("<H1>"
-                        + encoder.encodeForHTML(BaseMessages.getString(
+                        + Encode.forHtml(BaseMessages.getString(
                         PKG, "TransStatusServlet.Log.CoundNotFindTrans", transName)) + "</H1>");
                 out.println("<a href=\""
                         + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"

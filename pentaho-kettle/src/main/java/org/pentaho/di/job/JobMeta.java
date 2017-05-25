@@ -3,7 +3,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -51,6 +51,7 @@ import org.pentaho.di.core.util.StringUtil;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
+import org.pentaho.di.core.xml.XMLFormatter;
 import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.core.xml.XMLInterface;
 import org.pentaho.di.i18n.BaseMessages;
@@ -60,10 +61,7 @@ import org.pentaho.di.job.entry.JobEntryCopy;
 import org.pentaho.di.job.entry.JobEntryInterface;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.resource.*;
-import org.pentaho.di.shared.SharedObjectInterface;
-import org.pentaho.di.shared.SharedObjects;
 import org.pentaho.metastore.api.IMetaStore;
-import org.pentaho.metastore.api.exceptions.MetaStoreException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
@@ -278,46 +276,88 @@ public class JobMeta extends AbstractMeta
     }
 
     /**
-     * Compares two transformation on name, filename
+     * Compares two job on name, filename, repository directory, etc.
+     * The comparison algorithm is as follows:<br/>
+     * <ol>
+     * <li>The first job's filename is checked first; if it has none, the job comes from a
+     * repository. If the second job does not come from a repository, -1 is returned.</li>
+     * <li>If the jobs are both from a repository, the jobs' names are compared. If the first
+     * job has no name and the second one does, a -1 is returned.
+     * If the opposite is true, a 1 is returned.</li>
+     * <li>If they both have names they are compared as strings. If the result is non-zero it is returned. Otherwise the
+     * repository directories are compared using the same technique of checking empty values and then performing a string
+     * comparison, returning any non-zero result.</li>
+     * <li>If the names and directories are equal, the object revision strings are compared using the same technique of
+     * checking empty values and then performing a string comparison, this time ultimately returning the result of the
+     * string compare.</li>
+     * <li>If the first job does not come from a repository and the second one does, a 1 is returned. Otherwise
+     * the job names and filenames are subsequently compared using the same technique of checking empty values
+     * and then performing a string comparison, ultimately returning the result of the filename string comparison.
+     * </ol>
+     *
+     * @param t1 the first job to compare
+     * @param t2 the second job to compare
+     * @return 0 if the two jobs are equal, 1 or -1 depending on the values (see description above)
      */
     public int compare(JobMeta j1, JobMeta j2) {
-        if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
-            return -1;
-        }
-        if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
-            return 1;
-        }
-        if (Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName()) || j1.getName().equals(j2.getName())) {
-            if (Utils.isEmpty(j1.getFilename()) && !Utils.isEmpty(j2.getFilename())) {
+        // If we don't have a filename, the jobs comes from a repository
+        //
+        if (Utils.isEmpty(j1.getFilename())) {
+
+            if (!Utils.isEmpty(j2.getFilename())) {
                 return -1;
             }
-            if (!Utils.isEmpty(j1.getFilename()) && Utils.isEmpty(j2.getFilename())) {
+
+            // First compare names...
+            if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
+                return -1;
+            }
+            if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
                 return 1;
             }
-            if (Utils.isEmpty(j1.getFilename()) && Utils.isEmpty(j2.getFilename())) {
+            int cmpName = j1.getName().compareTo(j2.getName());
+            if (cmpName != 0) {
+                return cmpName;
+            }
+
+            // Same name, compare Repository directory...
+            int cmpDirectory = j1.getRepositoryDirectory().getPath().compareTo(j2.getRepositoryDirectory().getPath());
+            if (cmpDirectory != 0) {
+                return cmpDirectory;
+            }
+
+            // Same name, same directory, compare versions
+            if (j1.getObjectRevision() != null && j2.getObjectRevision() == null) {
+                return 1;
+            }
+            if (j1.getObjectRevision() == null && j2.getObjectRevision() != null) {
+                return -1;
+            }
+            if (j1.getObjectRevision() == null && j2.getObjectRevision() == null) {
                 return 0;
             }
-            return j1.getFilename().compareTo(j2.getFilename());
-        }
+            return j1.getObjectRevision().getName().compareTo(j2.getObjectRevision().getName());
 
-        // Compare by name : repositories etc.
-        //
-        if (j1.getObjectRevision() != null && j2.getObjectRevision() == null) {
-            return 1;
-        }
-        if (j1.getObjectRevision() == null && j2.getObjectRevision() != null) {
-            return -1;
-        }
-        int cmp;
-        if (j1.getObjectRevision() == null && j2.getObjectRevision() == null) {
-            cmp = 0;
         } else {
-            cmp = j1.getObjectRevision().getName().compareTo(j2.getObjectRevision().getName());
-        }
-        if (cmp == 0) {
-            return j1.getName().compareTo(j2.getName());
-        } else {
-            return cmp;
+            if (Utils.isEmpty(j2.getFilename())) {
+                return 1;
+            }
+
+            // First compare names
+            //
+            if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
+                return -1;
+            }
+            if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
+                return 1;
+            }
+            int cmpName = j1.getName().compareTo(j2.getName());
+            if (cmpName != 0) {
+                return cmpName;
+            }
+
+            // Same name, compare filenames...
+            return j1.getFilename().compareTo(j2.getFilename());
         }
     }
 
@@ -643,7 +683,7 @@ public class JobMeta extends AbstractMeta
 
         retval.append(XMLHandler.closeTag(XML_TAG)).append(Const.CR);
 
-        return retval.toString();
+        return XMLFormatter.format(retval.toString());
     }
 
     /**
@@ -1123,70 +1163,6 @@ public class JobMeta extends AbstractMeta
             throw new KettleXMLException(BaseMessages.getString(PKG, "JobMeta.Exception.UnableToLoadJobFromXMLNode"), e);
         } finally {
             setInternalKettleVariables();
-        }
-    }
-
-    /**
-     * Read shared objects.
-     *
-     * @return the shared objects
-     * @throws KettleException the kettle exception
-     */
-    public SharedObjects readSharedObjects() throws KettleException {
-        // Extract the shared steps, connections, etc. using the SharedObjects
-        // class
-        //
-        String soFile = environmentSubstitute(sharedObjectsFile);
-        SharedObjects sharedObjects = new SharedObjects(soFile);
-        Map<?, SharedObjectInterface> objectsMap = sharedObjects.getObjectsMap();
-
-        // First read the databases...
-        // We read databases & slaves first because there might be dependencies
-        // that need to be resolved.
-        //
-        for (SharedObjectInterface object : objectsMap.values()) {
-            if (object instanceof DatabaseMeta) {
-                DatabaseMeta databaseMeta = (DatabaseMeta) object;
-                databaseMeta.shareVariablesWith(this);
-                addOrReplaceDatabase(databaseMeta);
-            } else if (object instanceof SlaveServer) {
-                SlaveServer slaveServer = (SlaveServer) object;
-                slaveServer.shareVariablesWith(this);
-                addOrReplaceSlaveServer(slaveServer);
-            }
-        }
-
-        return sharedObjects;
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.pentaho.di.core.EngineMetaInterface#saveSharedObjects()
-     */
-    public void saveSharedObjects() throws KettleException {
-        try {
-            // First load all the shared objects...
-            String soFile = environmentSubstitute(sharedObjectsFile);
-            SharedObjects sharedObjects = new SharedObjects(soFile);
-
-            // Now overwrite the objects in there
-            List<Object> shared = new ArrayList<Object>();
-            shared.addAll(databases);
-            shared.addAll(slaveServers);
-
-            // The databases connections...
-            for (int i = 0; i < shared.size(); i++) {
-                SharedObjectInterface sharedObject = (SharedObjectInterface) shared.get(i);
-                if (sharedObject.isShared()) {
-                    sharedObjects.storeObject(sharedObject);
-                }
-            }
-
-            // Save the objects
-            sharedObjects.saveToFile();
-        } catch (Exception e) {
-            throw new KettleException("Unable to save shared ojects", e);
         }
     }
 
@@ -2419,6 +2395,10 @@ public class JobMeta extends AbstractMeta
             variables.setVariable(Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY, "");
             variables.setVariable(Const.INTERNAL_VARIABLE_JOB_FILENAME_NAME, "");
         }
+
+        variables.setVariable(Const.INTERNAL_VARIABLE_ENTRY_CURRENT_DIRECTORY, variables.getVariable(
+                repository != null ? Const.INTERNAL_VARIABLE_JOB_REPOSITORY_DIRECTORY
+                        : Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY));
     }
 
     @Deprecated
@@ -2787,16 +2767,6 @@ public class JobMeta extends AbstractMeta
 
     @Override
     public void setForcingSeparateLogging(boolean forcingSeparateLogging) {
-    }
-
-    /**
-     * This method needs to be called to store those objects which are used and referenced in the job metadata but not
-     * saved in the serialization.
-     *
-     * @param metaStore The store to save to
-     * @throws MetaStoreException in case there is an error.
-     */
-    public void saveMetaStoreObjects(Repository repository, IMetaStore metaStore) throws MetaStoreException {
     }
 
     public List<LogTableInterface> getExtraLogTables() {

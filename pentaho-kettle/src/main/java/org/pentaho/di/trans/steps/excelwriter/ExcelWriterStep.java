@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -27,6 +27,7 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellReference;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -215,6 +216,11 @@ public class ExcelWriterStep extends BaseStep implements StepInterface {
 
             // handle auto size for columns
             if (meta.isAutoSizeColums()) {
+
+                // track all columns for autosizing if using streaming worksheet
+                if (data.sheet instanceof SXSSFSheet) {
+                    ((SXSSFSheet) data.sheet).trackAllColumnsForAutoSizing();
+                }
 
                 if (meta.getOutputFields() == null || meta.getOutputFields().length == 0) {
                     for (int i = 0; i < data.inputRowMeta.size(); i++) {
@@ -835,8 +841,9 @@ public class ExcelWriterStep extends BaseStep implements StepInterface {
 
             // Find last row and append accordingly
             if (!data.createNewSheet && meta.isAppendLines() && appendingToSheet) {
-                data.posY = data.sheet.getLastRowNum();
-                if (data.posY > 0) {
+                data.posY = 0;
+                if (data.sheet.getPhysicalNumberOfRows() > 0) {
+                    data.posY = data.sheet.getLastRowNum();
                     data.posY++;
                 }
             }

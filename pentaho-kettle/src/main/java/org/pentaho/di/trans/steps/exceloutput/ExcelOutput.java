@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -22,12 +22,15 @@
 
 package org.pentaho.di.trans.steps.exceloutput;
 
+import jxl.Cell;
+import jxl.Sheet;
 import jxl.Workbook;
 import jxl.WorkbookSettings;
 import jxl.biff.StringHelper;
 import jxl.format.CellFormat;
 import jxl.format.Colour;
 import jxl.format.UnderlineStyle;
+import jxl.read.biff.BiffException;
 import jxl.write.*;
 import jxl.write.Label;
 import jxl.write.WritableFont.FontName;
@@ -46,6 +49,7 @@ import org.pentaho.di.trans.step.*;
 
 import java.awt.*;
 import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Locale;
 
@@ -85,26 +89,16 @@ public class ExcelOutput extends BaseStep implements StepInterface {
                 }
             }
 
-            if (meta.isDoNotOpenNewFileInit()) {
-                data.oneFileOpened = true;
+            if (meta.isDoNotOpenNewFileInit() && !openNewFile()) {
+                logError("Couldn't open file " + buildFilename());
+                return false;
+            }
 
-                if (!openNewFile()) {
-                    logError("Couldn't open file " + buildFilename());
-                    return false;
-                }
-                // If we need to write a header, do so...
-                //
-                if (meta.isHeaderEnabled() && !data.headerWrote) {
-                    writeHeader();
-                    data.headerWrote = true;
-                }
-            } else {
-                // If we need to write a header, do so...
-                //
-                if (meta.isHeaderEnabled() && !data.headerWrote) {
-                    writeHeader();
-                    data.headerWrote = true;
-                }
+            data.oneFileOpened = true;
+            // If we need to write a header, do so...
+            if (meta.isHeaderEnabled() && !data.headerWrote) {
+                writeHeader();
+                data.headerWrote = true;
             }
         }
 
@@ -308,7 +302,7 @@ public class ExcelOutput extends BaseStep implements StepInterface {
                 }
             }
             if (meta.isAutoSizeColumns()) {
-                // prepare auto size colums
+                // prepare auto size columns
                 int vlen = vMeta.getName().length();
                 if (!isHeader && v != null) {
                     vlen = v.toString().trim().length();
@@ -321,11 +315,15 @@ public class ExcelOutput extends BaseStep implements StepInterface {
             // Do we need to use a specific format to header?
             if (isHeader) {
                 // Set font for header and footer+
-                data.sheet.addCell(new Label(data.positionX, data.positionY, vMeta.getName(), data.headerCellFormat));
+                // row to write in
+                int rowNumber = data.sheet.getColumn(data.positionX).length;
+                data.sheet.addCell(new Label(data.positionX, rowNumber, vMeta.getName(), data.headerCellFormat));
                 if (cellFormat == null) {
                     data.formats.put(hashName, data.headerCellFormat); // save for next time around...
                 }
             } else {
+                // Will write new row after existing ones in current column
+                data.positionY = data.sheet.getColumn(data.positionX).length;
                 switch (vMeta.getType()) {
                     case ValueMetaInterface.TYPE_DATE: {
                         if (v != null && vMeta.getDate(v) != null) {
@@ -482,26 +480,17 @@ public class ExcelOutput extends BaseStep implements StepInterface {
             }
 
             // Create the workbook
+            File targetFile = new File(KettleVFS.getFilename(data.file));
             if (!meta.isTemplateEnabled()) {
-                File fle = new File(KettleVFS.getFilename(data.file));
-                if (meta.isAppend() && fle.exists()) {
-                    Workbook workbook = Workbook.getWorkbook(fle);
-                    data.workbook = Workbook.createWorkbook(fle, workbook);
-
-                    if (data.workbook.getSheet(data.realSheetname) != null) {
-                        // get available sheets
-                        String[] listSheets = data.workbook.getSheetNames();
-
-                        // Let's see if this sheet already exist...
-                        for (int i = 0; i < listSheets.length; i++) {
-                            if (listSheets[i].equals(data.realSheetname)) {
-                                // let's remove sheet
-                                data.workbook.removeSheet(i);
-                            }
-                        }
-                    }
+                if (meta.isAppend() && targetFile.exists()) {
+                    Workbook workbook = Workbook.getWorkbook(targetFile);
+                    data.workbook = Workbook.createWorkbook(targetFile, workbook);
                     // and now .. we create the sheet
-                    data.sheet = data.workbook.createSheet(data.realSheetname, data.workbook.getNumberOfSheets());
+                    int numberOfSheets = data.workbook.getNumberOfSheets();
+                    data.sheet = data.workbook.getSheet(numberOfSheets - 1);
+                    // if file exists and append option is set do not rewrite header
+                    // and ignore header option
+                    meta.setHeaderEnabled(false);
                 } else {
                     // Create a new Workbook
                     data.outputStream = KettleVFS.getOutputStream(data.file, false);
@@ -515,14 +504,21 @@ public class ExcelOutput extends BaseStep implements StepInterface {
                     }
                 }
             } else {
-                FileObject fo = KettleVFS.getFileObject(environmentSubstitute(meta.getTemplateFileName()), getTransMeta());
+                FileObject templateFile
+                        = KettleVFS.getFileObject(environmentSubstitute(meta.getTemplateFileName()), getTransMeta());
                 // create the openFile from the template
+                Workbook templateWorkbook = Workbook.getWorkbook(KettleVFS.getInputStream(templateFile), data.ws);
 
-                Workbook tmpWorkbook = Workbook.getWorkbook(KettleVFS.getInputStream(fo), data.ws);
-                data.outputStream = KettleVFS.getOutputStream(data.file, false);
-                data.workbook = Workbook.createWorkbook(data.outputStream, tmpWorkbook);
-
-                fo.close();
+                if (meta.isAppend() && targetFile.exists() && isTemplateContained(templateWorkbook, targetFile)) {
+                    // do not write header if file has already existed
+                    meta.setHeaderEnabled(false);
+                    Workbook targetFileWorkbook = Workbook.getWorkbook(targetFile);
+                    data.workbook = Workbook.createWorkbook(targetFile, targetFileWorkbook);
+                } else {
+                    data.outputStream = KettleVFS.getOutputStream(data.file, false);
+                    data.workbook = Workbook.createWorkbook(data.outputStream, templateWorkbook);
+                    templateFile.close();
+                }
                 // use only the first sheet as template
                 data.sheet = data.workbook.getSheet(0);
                 // save initial number of columns
@@ -545,7 +541,7 @@ public class ExcelOutput extends BaseStep implements StepInterface {
 
             data.positionX = 0;
             if (meta.isTemplateEnabled() && meta.isTemplateAppend()) {
-                data.positionY = data.sheet.getRows();
+                data.positionY = data.sheet.getColumn(data.positionX).length;
             } else {
                 data.positionY = 0;
             }
@@ -582,6 +578,49 @@ public class ExcelOutput extends BaseStep implements StepInterface {
         }
 
         return retval;
+    }
+
+    private boolean isTemplateContained(Workbook templateWorkbook, File targetFile)
+            throws IOException, BiffException {
+        Workbook targetFileWorkbook = Workbook.getWorkbook(targetFile);
+        int templateWorkbookNumberOfSheets = templateWorkbook.getNumberOfSheets();
+        int targetWorkbookNumberOfSheets = targetFileWorkbook.getNumberOfSheets();
+        if (templateWorkbookNumberOfSheets > targetWorkbookNumberOfSheets) {
+            return false;
+        }
+
+        for (int worksheetNumber = 0; worksheetNumber < templateWorkbookNumberOfSheets; worksheetNumber++) {
+            Sheet templateWorkbookSheet = templateWorkbook.getSheet(worksheetNumber);
+            Sheet targetWorkbookSheet = targetFileWorkbook.getSheet(worksheetNumber);
+            int templateWorkbookSheetColumns = templateWorkbookSheet.getColumns();
+            int targetWorkbookSheetColumns = targetWorkbookSheet.getColumns();
+            if (templateWorkbookSheetColumns > targetWorkbookSheetColumns) {
+                return false;
+            }
+            int templateWorkbookSheetRows = templateWorkbookSheet.getRows();
+            int targetWorkbookSheetRows = targetWorkbookSheet.getRows();
+            if (templateWorkbookSheetRows > targetWorkbookSheetRows) {
+                return false;
+            }
+            for (int currentRowNumber = 0; currentRowNumber < templateWorkbookSheetRows; currentRowNumber++) {
+                Cell[] templateWorkbookSheetRow = templateWorkbookSheet.getRow(currentRowNumber);
+                Cell[] targetWorkbookSheetRow = targetWorkbookSheet.getRow(currentRowNumber);
+                templateWorkbookSheetRow.toString();
+                targetWorkbookSheetRow.toString();
+                if (templateWorkbookSheetRow.length > targetWorkbookSheetRow.length) {
+                    return false;
+                }
+                for (int currentCellNumber = 0; currentCellNumber < templateWorkbookSheetRow.length; currentCellNumber++) {
+                    Cell templateWorksheetCell = templateWorkbookSheetRow[currentCellNumber];
+                    Cell targetWorksheetCell = targetWorkbookSheetRow[currentCellNumber];
+                    if (!templateWorksheetCell.getContents().equals(targetWorksheetCell.getContents())) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     private boolean closeFile() {
@@ -622,7 +661,7 @@ public class ExcelOutput extends BaseStep implements StepInterface {
                 }
 
             }
-            // data.formats.clear();
+            data.formats.clear();
             if (log.isDebug()) {
                 logDebug(BaseMessages.getString(PKG, "ExcelOutput.Log.FileClosed", filename));
             }

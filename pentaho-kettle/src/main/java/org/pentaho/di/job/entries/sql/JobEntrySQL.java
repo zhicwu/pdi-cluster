@@ -238,7 +238,7 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
             FileObject SQLfile = null;
             db.shareVariablesWith(this);
             try {
-                String mySQL = null;
+                String theSQL = null;
                 db.connect(parentJob.getTransactionId(), null);
 
                 if (sqlfromfile) {
@@ -247,10 +247,10 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
                     }
 
                     String realfilename = environmentSubstitute(sqlfilename);
-                    mySQL = ResourceDefinitionHelper.getTextFileContent(
+                    theSQL = ResourceDefinitionHelper.getTextFileContent(
                             this.getRepository(), realfilename, this.getLogChannel());
 
-                    if (Strings.isNullOrEmpty(mySQL)) {
+                    if (Strings.isNullOrEmpty(theSQL)) {
                         try {
                             SQLfile = KettleVFS.getFileObject(realfilename, this);
                             if (!SQLfile.exists()) {
@@ -270,13 +270,13 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
 
                                 BufferedReader buff = new BufferedReader(BIS);
                                 String sLine = null;
-                                mySQL = Const.CR;
+                                theSQL = Const.CR;
 
                                 while ((sLine = buff.readLine()) != null) {
                                     if (Utils.isEmpty(sLine)) {
-                                        mySQL = mySQL + Const.CR;
+                                        theSQL = theSQL + Const.CR;
                                     } else {
-                                        mySQL = mySQL + Const.CR + sLine;
+                                        theSQL = theSQL + Const.CR + sLine;
                                     }
                                 }
                             } finally {
@@ -288,20 +288,20 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
                         }
                     }
                 } else {
-                    mySQL = sql;
+                    theSQL = sql;
                 }
-                if (!Utils.isEmpty(mySQL)) {
+                if (!Utils.isEmpty(theSQL)) {
                     // let it run
                     if (useVariableSubstitution) {
-                        mySQL = environmentSubstitute(mySQL);
+                        theSQL = environmentSubstitute(theSQL);
                     }
                     if (isDetailed()) {
-                        logDetailed(BaseMessages.getString(PKG, "JobSQL.Log.SQlStatement", mySQL));
+                        logDetailed(BaseMessages.getString(PKG, "JobSQL.Log.SQlStatement", theSQL));
                     }
                     if (sendOneStatement) {
-                        db.execStatement(mySQL);
+                        db.execStatement(theSQL);
                     } else {
-                        db.execStatements(mySQL);
+                        db.execStatements(theSQL);
                     }
                 }
             } catch (KettleDatabaseException je) {

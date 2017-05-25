@@ -23,6 +23,7 @@
 package org.pentaho.di.core.row;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import org.pentaho.di.compatibility.Row;
 import org.pentaho.di.compatibility.Value;
 import org.pentaho.di.core.Const;
@@ -612,7 +613,7 @@ public class RowMeta implements RowMetaInterface {
             String[] retval = new String[size()];
 
             for (int i = 0; i < size(); i++) {
-                retval[i] = getValueMeta(i).getName();
+                retval[i] = Strings.nullToEmpty(getValueMeta(i).getName());
             }
 
             return retval;

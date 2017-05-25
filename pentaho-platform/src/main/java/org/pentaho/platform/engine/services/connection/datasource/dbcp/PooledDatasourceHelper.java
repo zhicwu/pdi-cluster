@@ -245,7 +245,7 @@ public class PooledDatasourceHelper {
        * because that essentially uses DriverManager as the source of connections.
        */
             ConnectionFactory factory = null;
-            if (url.startsWith("jdbc:mysql:")) {
+            if (url.startsWith("jdbc:mysql:") || (url.startsWith("jdbc:mariadb:"))) {
                 Properties props = new Properties();
                 props.put("user", databaseConnection.getUsername());
                 props.put("password", databaseConnection.getPassword());
