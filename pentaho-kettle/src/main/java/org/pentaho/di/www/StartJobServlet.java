@@ -22,8 +22,7 @@
 
 package org.pentaho.di.www;
 
-import org.owasp.esapi.ESAPI;
-import org.owasp.esapi.Encoder;
+import org.owasp.encoder.Encode;
 import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
@@ -161,8 +160,6 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
 
         response.setStatus(HttpServletResponse.SC_OK);
 
-        Encoder encoder = ESAPI.encoder();
-
         PrintWriter out = response.getWriter();
         if (useXML) {
             response.setContentType("text/xml");
@@ -252,7 +249,7 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
                     out.println(new WebResult(WebResult.STRING_OK, message, id).getXML());
                 } else {
 
-                    out.println("<H1>" + encoder.encodeForHTML(message) + "</H1>");
+                    out.println("<H1>" + Encode.forHtml(message) + "</H1>");
                     out.println("<a href=\""
                             + convertContextPath(GetJobStatusServlet.CONTEXT_PATH) + "?name="
                             + URLEncoder.encode(jobName, "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8") + "\">"
@@ -263,7 +260,7 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
                 if (useXML) {
                     out.println(new WebResult(WebResult.STRING_ERROR, message));
                 } else {
-                    out.println("<H1>" + encoder.encodeForHTML(message) + "</H1>");
+                    out.println("<H1>" + Encode.forHtml(message) + "</H1>");
                     out.println("<a href=\""
                             + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
                             + BaseMessages.getString(PKG, "TransStatusServlet.BackToStatusPage") + "</a><p>");
@@ -276,7 +273,7 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
             } else {
                 out.println("<p>");
                 out.println("<pre>");
-                out.println(encoder.encodeForHTML(Const.getStackTracker(ex)));
+                out.println(Encode.forHtml(Const.getStackTracker(ex)));
                 out.println("</pre>");
             }
         }

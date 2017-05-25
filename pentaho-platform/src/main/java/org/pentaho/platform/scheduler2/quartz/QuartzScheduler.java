@@ -12,22 +12,26 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2013 Pentaho Corporation..  All rights reserved.
+ * Copyright (c) 2002-2017 Pentaho Corporation..  All rights reserved.
  */
 
 package org.pentaho.platform.scheduler2.quartz;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.pentaho.platform.api.action.IAction;
 import org.pentaho.platform.api.engine.IPentahoSession;
+import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
+import org.pentaho.platform.api.repository2.unified.RepositoryFile;
 import org.pentaho.platform.api.scheduler2.*;
 import org.pentaho.platform.api.scheduler2.Job;
 import org.pentaho.platform.api.scheduler2.Job.JobState;
 import org.pentaho.platform.api.scheduler2.SchedulerException;
 import org.pentaho.platform.api.scheduler2.recur.ITimeRecurrence;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
+import org.pentaho.platform.engine.core.system.PentahoSystem;
 import org.pentaho.platform.engine.security.SecurityHelper;
 import org.pentaho.platform.scheduler2.messsages.Messages;
 import org.pentaho.platform.scheduler2.recur.*;
@@ -398,6 +402,12 @@ public class QuartzScheduler implements IScheduler {
                 } else if (trigger instanceof CronTrigger) {
                     ((CronTrigger) trigger).setPreviousFireTime(new Date());
                 }
+                if (trigger.getStartTime() != null && trigger.getStartTime().before(new Date())) {
+                    Date newStartTime = trigger.getFireTimeAfter(new Date());
+                    if (newStartTime != null) {
+                        trigger.setStartTime(newStartTime);
+                    }
+                }
                 // force the trigger to be updated with the previous fire time
                 scheduler.rescheduleJob(jobId, jobKey.getUserName(), trigger);
             }
@@ -470,7 +480,7 @@ public class QuartzScheduler implements IScheduler {
                         job.setJobId(jobId);
                         setJobTrigger(scheduler, job, trigger);
                         job.setJobName(QuartzJobKey.parse(jobId).getJobName());
-                        job.setNextRun(trigger.getNextFireTime());
+                        job.setNextRun(trigger.getFireTimeAfter(new Date()));
                         job.setLastRun(trigger.getPreviousFireTime());
                         if ((filter == null) || filter.accept(job)) {
                             jobs.add(job);
@@ -862,6 +872,34 @@ public class QuartzScheduler implements IScheduler {
                                  IBackgroundExecutionStreamProvider streamProvider) {
         for (ISchedulerListener listener : listeners) {
             listener.jobCompleted(actionBean, actionUser, params, streamProvider);
+        }
+    }
+
+    /**
+     * Checks if the text configuration for the input/output files is present.
+     * If not - silently returns. If present checks if the input file is allowed to be scheduled.
+     *
+     * @param jobParams scheduling job parameters
+     * @throws SchedulerException the configuration is recognized but the file can't be scheduled, is a folder or doesn't exist.
+     */
+    @Override
+    public void validateJobParams(Map<String, Serializable> jobParams) throws SchedulerException {
+        final Object streamProviderObj = jobParams.get(RESERVEDMAPKEY_STREAMPROVIDER);
+        if (streamProviderObj instanceof String) {
+            String inputFilePath = null;
+            final String inputOutputString = (String) streamProviderObj;
+            final String[] tokens = inputOutputString.split(":");
+            if (!ArrayUtils.isEmpty(tokens) && tokens.length == 2) {
+                inputFilePath = tokens[0].split("=")[1].trim();
+                if (StringUtils.isNotBlank(inputFilePath)) {
+                    final IUnifiedRepository repository = PentahoSystem.get(IUnifiedRepository.class);
+                    final RepositoryFile repositoryFile = repository.getFile(inputFilePath);
+                    if ((repositoryFile == null) || repositoryFile.isFolder() || !repositoryFile.isSchedulable()) {
+                        throw new SchedulerException(Messages.getInstance().getString(
+                                "QuartzScheduler.ERROR_0008_SCHEDULING_IS_NOT_ALLOWED"));
+                    }
+                }
+            }
         }
     }
 }

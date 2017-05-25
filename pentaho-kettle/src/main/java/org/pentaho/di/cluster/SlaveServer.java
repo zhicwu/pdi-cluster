@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -22,6 +22,7 @@
 
 package org.pentaho.di.cluster;
 
+import com.google.common.base.Strings;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpState;
@@ -321,7 +322,7 @@ public class SlaveServer extends ChangedFlag implements Cloneable, SharedObjectI
     }
 
     public int hashCode() {
-        return name.hashCode();
+        return Strings.nullToEmpty(name).toLowerCase().hashCode();
     }
 
     public String getHostname() {

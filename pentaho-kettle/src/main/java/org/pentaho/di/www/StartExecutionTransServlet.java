@@ -22,8 +22,7 @@
 
 package org.pentaho.di.www;
 
-import org.owasp.esapi.ESAPI;
-import org.owasp.esapi.Encoder;
+import org.owasp.encoder.Encode;
 import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
@@ -152,8 +151,6 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
         String id = request.getParameter("id");
         boolean useXML = "Y".equalsIgnoreCase(request.getParameter("xml"));
 
-        Encoder encoder = ESAPI.encoder();
-
         PrintWriter out = response.getWriter();
         if (useXML) {
             response.setContentType("text/xml");
@@ -203,8 +200,8 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
                         out.println(WebResult.OK.getXML());
                     } else {
                         out
-                                .println("<H1>Transformation '"
-                                        + encoder.encodeForHTML(transName) + "' has been executed.</H1>");
+                                .println("<H1>Transformation "
+                                        + Encode.forHtml("\'" + transName + "\'") + " has been executed.</H1>");
                         out.println("<a href=\""
                                 + convertContextPath(GetTransStatusServlet.CONTEXT_PATH) + "?name="
                                 + URLEncoder.encode(transName, "UTF-8") + "&id=" + URLEncoder.encode(id, "UTF-8")
@@ -217,7 +214,7 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
                     if (useXML) {
                         out.println(new WebResult(WebResult.STRING_ERROR, message));
                     } else {
-                        out.println("<H1>" + encoder.encodeForHTML(message) + "</H1>");
+                        out.println("<H1>" + Encode.forHtml(message) + "</H1>");
                         out.println("<a href=\""
                                 + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
                                 + BaseMessages.getString(PKG, "TransStatusServlet.BackToStatusPage") + "</a><p>");
@@ -229,7 +226,7 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
                             PKG, "TransStatusServlet.Log.CoundNotFindSpecTrans", transName)));
                 } else {
                     out.println("<H1>"
-                            + encoder.encodeForHTML(BaseMessages.getString(
+                            + Encode.forHtml(BaseMessages.getString(
                             PKG, "TransStatusServlet.Log.CoundNotFindTrans", transName)) + "</H1>");
                     out.println("<a href=\""
                             + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
@@ -244,7 +241,7 @@ public class StartExecutionTransServlet extends BaseHttpServlet implements Carte
             } else {
                 out.println("<p>");
                 out.println("<pre>");
-                out.println(encoder.encodeForHTML(Const.getStackTracker(ex)));
+                out.println(Encode.forHtml(Const.getStackTracker(ex)));
                 out.println("</pre>");
             }
         }

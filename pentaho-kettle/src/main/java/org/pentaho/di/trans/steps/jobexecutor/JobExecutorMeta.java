@@ -28,16 +28,13 @@ import org.pentaho.di.core.Const;
 import org.pentaho.di.core.ObjectLocationSpecificationMethod;
 import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
+import org.pentaho.di.core.exception.KettlePluginException;
 import org.pentaho.di.core.exception.KettleStepException;
 import org.pentaho.di.core.exception.KettleXMLException;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.row.RowMetaInterface;
-import org.pentaho.di.core.row.ValueMeta;
 import org.pentaho.di.core.row.ValueMetaInterface;
-import org.pentaho.di.core.row.value.ValueMetaBoolean;
-import org.pentaho.di.core.row.value.ValueMetaFactory;
-import org.pentaho.di.core.row.value.ValueMetaInteger;
-import org.pentaho.di.core.row.value.ValueMetaString;
+import org.pentaho.di.core.row.value.*;
 import org.pentaho.di.core.util.CurrentDirectoryResolver;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
@@ -511,8 +508,14 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
 
         if (nextStep != null && resultRowsTargetStepMeta != null && nextStep.equals(resultRowsTargetStepMeta)) {
             for (int i = 0; i < resultRowsField.length; i++) {
-                ValueMetaInterface value =
-                        new ValueMeta(resultRowsField[i], resultRowsType[i], resultRowsLength[i], resultRowsPrecision[i]);
+                ValueMetaInterface value;
+                try {
+                    value = ValueMetaFactory.createValueMeta(resultRowsField[i], resultRowsType[i],
+                            resultRowsLength[i], resultRowsPrecision[i]);
+                } catch (KettlePluginException e) {
+                    value = new ValueMetaNone(resultRowsField[i]);
+                    value.setLength(resultRowsLength[i], resultRowsPrecision[i]);
+                }
                 row.addValueMeta(value);
             }
         } else if (nextStep != null
@@ -1471,6 +1474,14 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
 
     public IMetaStore getMetaStore() {
         return metaStore;
+    }
+
+    @Override
+    public boolean cleanAfterHopFromRemove() {
+        setExecutionResultTargetStepMeta(null);
+        setResultRowsTargetStepMeta(null);
+        setResultFilesTargetStepMeta(null);
+        return true;
     }
 
 }

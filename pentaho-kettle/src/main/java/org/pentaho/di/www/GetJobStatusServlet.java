@@ -22,8 +22,7 @@
 
 package org.pentaho.di.www;
 
-import org.owasp.esapi.ESAPI;
-import org.owasp.esapi.Encoder;
+import org.owasp.encoder.Encode;
 import org.pentaho.di.cluster.HttpUtil;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.Result;
@@ -233,8 +232,6 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
             }
         }
 
-        Encoder encoder = ESAPI.encoder();
-
         if (job != null) {
             String status = job.getStatus();
             int lastLineNr = KettleLogStore.getLastBufferLineNr();
@@ -299,7 +296,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                             + BaseMessages.getString(PKG, "TransStatusServlet.TransStatus") + "</th> </tr>");
 
                     out.print("<tr>");
-                    out.print("<td>" + Const.NVL(encoder.encodeForHTML(jobName), "") + "</td>");
+                    out.print("<td>" + Const.NVL(Encode.forHtml(jobName), "") + "</td>");
                     out.print("<td>" + status + "</td>");
                     out.print("</tr>");
                     out.print("</table>");
@@ -358,7 +355,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                     out.println("<p>");
                     out.println("<textarea id=\"joblog\" style=\"width: 100%\" rows=\"30\" wrap=\"off\" "
                             + "name=\"Job log\" readonly=\"readonly\">"
-                            + encoder.encodeForHTML(logText) + "</textarea>");
+                            + Encode.forHtml(logText) + "</textarea>");
 
                     out.println("<script type=\"text/javascript\"> ");
                     out.println("  joblog.scrollTop=joblog.scrollHeight; ");
@@ -367,7 +364,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                 } catch (Exception ex) {
                     out.println("<p>");
                     out.println("<pre>");
-                    out.println(encoder.encodeForHTML(Const.getStackTracker(ex)));
+                    out.println(Encode.forHtml(Const.getStackTracker(ex)));
                     out.println("</pre>");
                 }
 
@@ -380,7 +377,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                 out.println(new WebResult(WebResult.STRING_ERROR, BaseMessages.getString(
                         PKG, "StartJobServlet.Log.SpecifiedJobNotFound", jobName, id)));
             } else {
-                out.println("<H1>Job '" + encoder.encodeForHTML(jobName) + "' could not be found.</H1>");
+                out.println("<H1>Job " + Encode.forHtml("\'" + jobName + "\'") + " could not be found.</H1>");
                 out.println("<a href=\""
                         + convertContextPath(GetStatusServlet.CONTEXT_PATH) + "\">"
                         + BaseMessages.getString(PKG, "TransStatusServlet.BackToStatusPage") + "</a><p>");
