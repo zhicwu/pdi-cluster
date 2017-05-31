@@ -59,7 +59,8 @@ import java.io.File;
 import java.util.*;
 
 public class WebServer {
-
+    private static final boolean KETTLE_LISTEN_ANY_LOCAL_ADDRESS
+            = "Y".equalsIgnoreCase(System.getProperty("KETTLE_LISTEN_ANY_LOCAL_ADDRESS", "Y"));
     private static final int DEFAULT_DETECTION_TIMER = 20000;
     private static Class<?> PKG = WebServer.class; // for i18n purposes, needed by Translator2!!
 
@@ -316,7 +317,9 @@ public class WebServer {
         SocketConnector connector = getConnector();
         setupJettyOptions(connector);
         connector.setPort(port);
-        connector.setHost(hostname);
+        if (!KETTLE_LISTEN_ANY_LOCAL_ADDRESS) {
+            connector.setHost(hostname);
+        }
         connector.setName(BaseMessages.getString(PKG, "WebServer.Log.KettleHTTPListener", hostname));
         log.logBasic(BaseMessages.getString(PKG, "WebServer.Log.CreateListener", hostname, "" + port));
 
