@@ -219,19 +219,19 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
 
             for (CarteObjectEntry entry : transEntries) {
                 Trans trans = getTransformationMap().getTransformation(entry);
-                String status = trans.getStatus();
+                String status = trans == null ? "N/A" : trans.getStatus();
 
                 SlaveServerTransStatus sstatus = new SlaveServerTransStatus(entry.getName(), entry.getId(), status);
-                sstatus.setLogDate(trans.getLogDate());
-                sstatus.setPaused(trans.isPaused());
+                sstatus.setLogDate(trans == null ? new Date() : trans.getLogDate());
+                sstatus.setPaused(trans == null ? false : trans.isPaused());
                 serverStatus.getTransStatusList().add(sstatus);
             }
 
             for (CarteObjectEntry entry : jobEntries) {
                 Job job = getJobMap().getJob(entry);
-                String status = job.getStatus();
+                String status = job == null ? "N/A" : job.getStatus();
                 SlaveServerJobStatus jobStatus = new SlaveServerJobStatus(entry.getName(), entry.getId(), status);
-                jobStatus.setLogDate(job.getLogDate());
+                jobStatus.setLogDate(job == null ? new Date() : job.getLogDate());
                 serverStatus.getJobStatusList().add(jobStatus);
             }
 
