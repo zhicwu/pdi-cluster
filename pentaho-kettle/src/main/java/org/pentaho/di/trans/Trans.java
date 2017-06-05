@@ -758,10 +758,12 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
     }
 
     private void executeInSerial() throws KettleException {
-        // check if there's any multi-input step - you don't want to run transformation with MergeJoin in single thread
+        // fallback to multi-thread mode(NORMAL), if there's any step with multiple inputs or outputs
+        // for example, if you run transformation with MergeJoin in single thread, the step will stuck there forever
         for (StepMetaDataCombi combi : steps) {
-            if (transMeta.findPreviousSteps(combi.stepMeta).size() > 1) {
-                log.logBasic("Multi-input step [" + combi.stepname + "] detected, switching back to multi-thread mode");
+            if (transMeta.findPreviousSteps(combi.stepMeta).size() > 1
+                    || transMeta.findNextSteps(combi.stepMeta).size() > 1) {
+                log.logBasic("Multiple inputs/outputs detected for step [" + combi.stepname + "], switching back to multi-thread mode");
                 // FIXME maybe we need a "mixed" mode to run most steps in one thread, while others in multi-thread mode
                 executeInParallel();
                 return;
@@ -781,6 +783,22 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                     //
                     for (StepMetaDataCombi combi : steps) {
                         combi.step.setUsingThreadPriorityManagment(false);
+
+                        ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeStart.id, combi);
+                        // Call an extension point at the end of the step
+                        //
+                        combi.step.addStepListener(new StepAdapter() {
+
+                            @Override
+                            public void stepFinished(Trans trans, StepMeta stepMeta, StepInterface step) {
+                                try {
+                                    ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepFinished.id, combi);
+                                } catch (KettleException e) {
+                                    throw new RuntimeException("Unexpected error in calling extension point upon step finish", e);
+                                }
+                            }
+
+                        });
                         combi.step.setRunning(true);
                         // log.logBasic("Starting step [" + combi.step.getStepname() + "]");
                     }
@@ -799,28 +817,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                                 if (!cont) {
                                     stepDone[i] = true;
                                     nrDone++;
-
-                                    try {
-                                        long li = combi.step.getLinesInput();
-                                        long lo = combi.step.getLinesOutput();
-                                        long lr = combi.step.getLinesRead();
-                                        long lw = combi.step.getLinesWritten();
-                                        long lu = combi.step.getLinesUpdated();
-                                        long lj = combi.step.getLinesRejected();
-                                        long e = combi.step.getErrors();
-
-                                        log.logBasic(new StringBuilder().append("Finished processing (I=")
-                                                .append(li).append(", O=").append(lo).append(", R=").append(lr)
-                                                .append(", W=").append(lw).append(", U=").append(lu)
-                                                .append(", E=").append(e + lj).append(')').toString());
-                                    } catch (Throwable t) {
-                                        // should never happen
-                                        log.logBasic(new StringBuilder().append("Finished processing (I=")
-                                                .append(Integer.MAX_VALUE).append(", O=").append(Integer.MAX_VALUE)
-                                                .append(", R=").append(Integer.MAX_VALUE).append(", W=")
-                                                .append(Integer.MAX_VALUE).append(", U=").append(Integer.MAX_VALUE)
-                                                .append(", E=").append(Integer.MAX_VALUE).append(')').toString());
-                                    }
                                 }
                                 // }
                             }
@@ -867,6 +863,8 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
 
             thread.start();
         }
+
+        heartbeat = startHeartbeat(getHeartbeatIntervalInSeconds());
     }
 
     /**
@@ -1559,7 +1557,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
         switch (transMeta.getTransformationType()) {
             case Normal:
                 executeInParallel();
-                heartbeat = startHeartbeat(getHeartbeatIntervalInSeconds());
                 break;
 
             case SerialSingleThreaded:
