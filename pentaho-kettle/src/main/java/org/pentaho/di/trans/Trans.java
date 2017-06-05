@@ -758,6 +758,16 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
     }
 
     private void executeInSerial() throws KettleException {
+        // check if there's any multi-input step - you don't want to run transformation with MergeJoin in single thread
+        for (StepMetaDataCombi combi : steps) {
+            if (transMeta.findPreviousSteps(combi.stepMeta).size() > 1) {
+                log.logBasic("Multi-input step [" + combi.stepname + "] detected, switching back to multi-thread mode");
+                // FIXME maybe we need a "mixed" mode to run most steps in one thread, while others in multi-thread mode
+                executeInParallel();
+                return;
+            }
+        }
+
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -772,10 +782,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                     for (StepMetaDataCombi combi : steps) {
                         combi.step.setUsingThreadPriorityManagment(false);
                         combi.step.setRunning(true);
-                        log.logBasic("Starting step [" + combi.step.getStepname() + "]");
+                        // log.logBasic("Starting step [" + combi.step.getStepname() + "]");
                     }
 
-                    // FIXME: this usually won't work in step like MergeJoin
                     boolean[] stepDone = new boolean[steps.size()];
                     int nrDone = 0;
                     while (nrDone < steps.size() && !isStopped()) {
@@ -784,13 +793,34 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                             if (!stepDone[i]) {
                                 // if (combi.step.canProcessOneRow() ||
                                 // !combi.step.isRunning()) {
-                                log.logBasic("Running step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size());
+                                // log.logBasic("Running step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size());
                                 boolean cont = combi.step.processRow(combi.meta, combi.data) || combi.step.isStopped();
-                                log.logBasic("Finish step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size() + " " + cont);
+                                // log.logBasic("Finish step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size() + " " + cont);
                                 if (!cont) {
                                     stepDone[i] = true;
                                     nrDone++;
-                                    log.logBasic(combi.step.getStepname() + " finished - " + nrDone + " of " + steps.size());
+
+                                    try {
+                                        long li = combi.step.getLinesInput();
+                                        long lo = combi.step.getLinesOutput();
+                                        long lr = combi.step.getLinesRead();
+                                        long lw = combi.step.getLinesWritten();
+                                        long lu = combi.step.getLinesUpdated();
+                                        long lj = combi.step.getLinesRejected();
+                                        long e = combi.step.getErrors();
+
+                                        log.logBasic(new StringBuilder().append("Finished processing (I=")
+                                                .append(li).append(", O=").append(lo).append(", R=").append(lr)
+                                                .append(", W=").append(lw).append(", U=").append(lu)
+                                                .append(", E=").append(e + lj).append(')').toString());
+                                    } catch (Throwable t) {
+                                        // should never happen
+                                        log.logBasic(new StringBuilder().append("Finished processing (I=")
+                                                .append(Integer.MAX_VALUE).append(", O=").append(Integer.MAX_VALUE)
+                                                .append(", R=").append(Integer.MAX_VALUE).append(", W=")
+                                                .append(Integer.MAX_VALUE).append(", U=").append(Integer.MAX_VALUE)
+                                                .append(", E=").append(Integer.MAX_VALUE).append(')').toString());
+                                    }
                                 }
                                 // }
                             }
@@ -804,7 +834,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
                         StepMetaDataCombi combi = steps.get(i);
                         combi.step.dispose(combi.meta, combi.data);
                         combi.step.markStop();
-                        log.logBasic(combi.step.getStepname() + " disposed");
+                        // log.logBasic(combi.step.getStepname() + " disposed");
                     }
                 }
             }
