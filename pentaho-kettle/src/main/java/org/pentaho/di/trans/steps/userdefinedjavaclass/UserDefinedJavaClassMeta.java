@@ -74,6 +74,7 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
     private static final Cache<Long, Class> classCache = CacheBuilder.newBuilder()
             .maximumSize(KETTLE_CLASS_CACHE_SIZE)
             .expireAfterAccess(KETTLE_CLASS_CACHE_EXPIRE_MINUTE, TimeUnit.MINUTES)
+            .recordStats()
             .build();
 
     public enum ElementNames {
@@ -120,6 +121,23 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
         }
     }
 
+    /*
+    public static String getCacheStats() {
+        StringBuilder sb = new StringBuilder(classCache.stats().toString());
+
+        try {
+            Map<Long, Class> map = classCache.asMap();
+            for (Map.Entry<Long, Class> entry : map.entrySet()) {
+                sb.append(Const.CR).append(entry.getKey()).append(':').append(entry.getValue());
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        return sb.toString();
+    }
+    */
+
     public UserDefinedJavaClassMeta() {
         super();
         changed = true;
@@ -129,7 +147,7 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
     }
 
     private Class<?> loadOrCookClass(UserDefinedJavaClassDef def) throws Exception {
-        long hash = Hashing.sha1().newHasher()
+        long hash = Hashing.md5().newHasher()
                 .putString(def.getClassName(), Charsets.UTF_8)
                 .putString(def.getSource(), Charsets.UTF_8).hash().asLong();
         Class clazz = null;
@@ -137,12 +155,15 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
             clazz = classCache.get(hash, new Callable<Class>() {
                 @Override
                 public Class call() throws Exception {
+                    // UserDefinedJavaClassMeta.this.logError("Cooking class: " + def.getClassName());
                     return cookClass(def);
                 }
             });
         } catch (ExecutionException e) {
             throw new KettleStepException(e.getCause());
         }
+
+        // this.logError(getCacheStats());
 
         return clazz;
     }
