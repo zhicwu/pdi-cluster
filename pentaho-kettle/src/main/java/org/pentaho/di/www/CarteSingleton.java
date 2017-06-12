@@ -64,7 +64,7 @@ public class CarteSingleton {
         detections = new ArrayList<SlaveServerDetection>();
         socketRepository = new SocketRepository(log);
 
-        installPurgeTimer(config, log, transformationMap, jobMap);
+        // installPurgeTimer(config, log, transformationMap, jobMap);
 
         SlaveServer slaveServer = config.getSlaveServer();
         if (slaveServer != null) {
@@ -143,14 +143,12 @@ public class CarteSingleton {
 
             log.logBasic("Installing timer to purge stale objects after " + objectTimeout + " minutes.");
 
-            Timer timer = new Timer(true);
+            Timer timer = new Timer("Timer-PurgeStaleObject", true);
 
             final AtomicBoolean busy = new AtomicBoolean(false);
             TimerTask timerTask = new TimerTask() {
                 public void run() {
-                    if (!busy.get()) {
-                        busy.set(true);
-
+                    if (busy.compareAndSet(false, true)) {
                         try {
                             // Check all transformations...
                             //
@@ -217,6 +215,8 @@ public class CarteSingleton {
                                 }
                             }
 
+                        } catch (Throwable t) {
+                            log.logError("Error occurred while purging stable objects", t);
                         } finally {
                             busy.set(false);
                         }

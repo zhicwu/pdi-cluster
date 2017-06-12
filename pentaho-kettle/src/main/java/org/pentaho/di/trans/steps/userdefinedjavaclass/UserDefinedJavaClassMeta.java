@@ -59,6 +59,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -121,7 +122,6 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
         }
     }
 
-    /*
     public static String getCacheStats() {
         StringBuilder sb = new StringBuilder(classCache.stats().toString());
 
@@ -136,7 +136,6 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
 
         return sb.toString();
     }
-    */
 
     public UserDefinedJavaClassMeta() {
         super();

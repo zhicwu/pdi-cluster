@@ -38,14 +38,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author Matt
  */
 public class TransformationMap {
-    private final Map<CarteObjectEntry, TransData> transMap;
-
     private final Map<String, List<SocketPortAllocation>> hostServerSocketPortsMap;
 
     private SlaveServerConfig slaveServerConfig;
+    private KettleTaskMap<Trans, TransConfiguration> map;
+
+    private void initCache() {
+        if (map != null) {
+            map.clear();
+        }
+
+        map = new KettleTaskMap<>(slaveServerConfig);
+    }
 
     public TransformationMap() {
-        transMap = new ConcurrentHashMap<>();
+        initCache();
         hostServerSocketPortsMap = new ConcurrentHashMap<>();
     }
 
@@ -60,13 +67,13 @@ public class TransformationMap {
     public void addTransformation(String transformationName, String containerObjectId, Trans trans,
                                   TransConfiguration transConfiguration) {
         CarteObjectEntry entry = new CarteObjectEntry(transformationName, containerObjectId);
-        transMap.put(entry, new TransData(trans, transConfiguration));
+        map.cache.put(entry, map.createEntry(trans, transConfiguration));
     }
 
     public void registerTransformation(Trans trans, TransConfiguration transConfiguration) {
         trans.setContainerObjectId(UUID.randomUUID().toString());
         CarteObjectEntry entry = new CarteObjectEntry(trans.getTransMeta().getName(), trans.getContainerObjectId());
-        transMap.put(entry, new TransData(trans, transConfiguration));
+        map.cache.put(entry, map.createEntry(trans, transConfiguration));
     }
 
     /**
@@ -76,9 +83,9 @@ public class TransformationMap {
      * @return the first transformation with the specified name
      */
     public Trans getTransformation(String transformationName) {
-        for (CarteObjectEntry entry : transMap.keySet()) {
+        for (CarteObjectEntry entry : map.cache.asMap().keySet()) {
             if (entry.getName().equals(transformationName)) {
-                return transMap.get(entry).getTrans();
+                return getTransformation(entry);
             }
         }
         return null;
@@ -89,7 +96,9 @@ public class TransformationMap {
      * @return the transformation with the specified entry
      */
     public Trans getTransformation(CarteObjectEntry entry) {
-        return transMap.get(entry).getTrans();
+        KettleTaskMap.EntryInfo<Trans, TransConfiguration> info = map.cache.getIfPresent(entry);
+
+        return info == null ? null : info.entry;
     }
 
     /**
@@ -97,9 +106,9 @@ public class TransformationMap {
      * @return The first transformation configuration with the specified name
      */
     public TransConfiguration getConfiguration(String transformationName) {
-        for (CarteObjectEntry entry : transMap.keySet()) {
+        for (CarteObjectEntry entry : map.cache.asMap().keySet()) {
             if (entry.getName().equals(transformationName)) {
-                return transMap.get(entry).getConfiguration();
+                return getConfiguration(entry);
             }
         }
         return null;
@@ -110,18 +119,20 @@ public class TransformationMap {
      * @return the transformation configuration with the specified entry
      */
     public TransConfiguration getConfiguration(CarteObjectEntry entry) {
-        return transMap.get(entry).getConfiguration();
+        KettleTaskMap.EntryInfo<Trans, TransConfiguration> info = map.cache.getIfPresent(entry);
+
+        return info == null ? null : info.config;
     }
 
     /**
      * @param entry the Carte object entry
      */
     public void removeTransformation(CarteObjectEntry entry) {
-        transMap.remove(entry);
+        map.cache.invalidate(entry);
     }
 
     public List<CarteObjectEntry> getTransformationObjects() {
-        return new ArrayList<>(transMap.keySet());
+        return new ArrayList<>(map.cache.asMap().keySet());
     }
 
 
@@ -325,7 +336,7 @@ public class TransformationMap {
     }
 
     public CarteObjectEntry getFirstCarteObjectEntry(String transName) {
-        for (CarteObjectEntry key : transMap.keySet()) {
+        for (CarteObjectEntry key : map.cache.asMap().keySet()) {
             if (key.getName().equals(transName)) {
                 return key;
             }
@@ -344,7 +355,11 @@ public class TransformationMap {
      * @param slaveServerConfig the slaveServerConfig to set
      */
     public void setSlaveServerConfig(SlaveServerConfig slaveServerConfig) {
-        this.slaveServerConfig = slaveServerConfig;
+        if (this.slaveServerConfig != slaveServerConfig) {
+            this.slaveServerConfig = slaveServerConfig;
+
+            this.initCache();
+        }
     }
 
     /**
@@ -379,31 +394,7 @@ public class TransformationMap {
         return slaveSequence;
     }
 
-    private static class TransData {
-
-        private Trans trans;
-
-        private TransConfiguration configuration;
-
-        TransData(Trans trans, TransConfiguration configuration) {
-            this.trans = trans;
-            this.configuration = configuration;
-        }
-
-        public Trans getTrans() {
-            return trans;
-        }
-
-        public void setTrans(Trans trans) {
-            this.trans = trans;
-        }
-
-        public TransConfiguration getConfiguration() {
-            return configuration;
-        }
-
-        public void setConfiguration(TransConfiguration configuration) {
-            this.configuration = configuration;
-        }
+    String getStats() {
+        return map.getStats();
     }
 }

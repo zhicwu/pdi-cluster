@@ -25,7 +25,9 @@ package org.pentaho.di.www;
 import org.pentaho.di.job.Job;
 import org.pentaho.di.job.JobConfiguration;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * This is a map between the job name and the (running/waiting/finished) job.
@@ -34,32 +36,35 @@ import java.util.*;
  * @since 3.0.0
  */
 public class JobMap {
-    private final Map<CarteObjectEntry, Job> jobMap;
-    private final Map<CarteObjectEntry, JobConfiguration> configurationMap;
+    private KettleTaskMap<Job, JobConfiguration> map;
 
     private SlaveServerConfig slaveServerConfig;
 
+    private void initCache() {
+        if (map != null) {
+            map.clear();
+        }
+
+        map = new KettleTaskMap<>(slaveServerConfig);
+    }
+
     public JobMap() {
-        jobMap = new HashMap<>();
-        configurationMap = new HashMap<>();
+        initCache();
     }
 
     public synchronized void addJob(String jobName, String carteObjectId, Job job, JobConfiguration jobConfiguration) {
         CarteObjectEntry entry = new CarteObjectEntry(jobName, carteObjectId);
-        jobMap.put(entry, job);
-        configurationMap.put(entry, jobConfiguration);
+        map.cache.put(entry, map.createEntry(job, jobConfiguration));
     }
 
     public synchronized void registerJob(Job job, JobConfiguration jobConfiguration) {
         job.setContainerObjectId(UUID.randomUUID().toString());
         CarteObjectEntry entry = new CarteObjectEntry(job.getJobMeta().getName(), job.getContainerObjectId());
-        jobMap.put(entry, job);
-        configurationMap.put(entry, jobConfiguration);
+        map.cache.put(entry, map.createEntry(job, jobConfiguration));
     }
 
     public synchronized void replaceJob(CarteObjectEntry entry, Job job, JobConfiguration jobConfiguration) {
-        jobMap.put(entry, job);
-        configurationMap.put(entry, jobConfiguration);
+        map.cache.put(entry, map.createEntry(job, jobConfiguration));
     }
 
     /**
@@ -69,7 +74,7 @@ public class JobMap {
      * @return the first transformation with the specified name
      */
     public synchronized Job getJob(String jobName) {
-        for (CarteObjectEntry entry : jobMap.keySet()) {
+        for (CarteObjectEntry entry : map.cache.asMap().keySet()) {
             if (entry.getName().equals(jobName)) {
                 return getJob(entry);
             }
@@ -82,11 +87,13 @@ public class JobMap {
      * @return the job with the specified entry
      */
     public synchronized Job getJob(CarteObjectEntry entry) {
-        return jobMap.get(entry);
+        KettleTaskMap.EntryInfo<Job, JobConfiguration> info = map.cache.getIfPresent(entry);
+
+        return info == null ? null : info.entry;
     }
 
     public synchronized JobConfiguration getConfiguration(String jobName) {
-        for (CarteObjectEntry entry : configurationMap.keySet()) {
+        for (CarteObjectEntry entry : map.cache.asMap().keySet()) {
             if (entry.getName().equals(jobName)) {
                 return getConfiguration(entry);
             }
@@ -99,24 +106,26 @@ public class JobMap {
      * @return the job configuration with the specified entry
      */
     public synchronized JobConfiguration getConfiguration(CarteObjectEntry entry) {
-        return configurationMap.get(entry);
+        KettleTaskMap.EntryInfo<Job, JobConfiguration> info = map.cache.getIfPresent(entry);
+
+        return info == null ? null : info.config;
     }
 
     public synchronized void removeJob(CarteObjectEntry entry) {
-        jobMap.remove(entry);
-        configurationMap.remove(entry);
+        map.cache.invalidate(entry);
     }
 
     public synchronized List<CarteObjectEntry> getJobObjects() {
-        return new ArrayList<>(jobMap.keySet());
+        return new ArrayList<>(map.cache.asMap().keySet());
     }
 
     public synchronized CarteObjectEntry getFirstCarteObjectEntry(String jobName) {
-        for (CarteObjectEntry key : jobMap.keySet()) {
+        for (CarteObjectEntry key : map.cache.asMap().keySet()) {
             if (key.getName().equals(jobName)) {
                 return key;
             }
         }
+
         return null;
     }
 
@@ -131,7 +140,11 @@ public class JobMap {
      * @param slaveServerConfig the slaveServerConfig to set
      */
     public void setSlaveServerConfig(SlaveServerConfig slaveServerConfig) {
-        this.slaveServerConfig = slaveServerConfig;
+        if (this.slaveServerConfig != slaveServerConfig) {
+            this.slaveServerConfig = slaveServerConfig;
+
+            this.initCache();
+        }
     }
 
     /**
@@ -141,12 +154,16 @@ public class JobMap {
      * @return The job if it's found, null if the ID couldn't be found in the job map.
      */
     public synchronized Job findJob(String id) {
-        for (Job job : jobMap.values()) {
-            if (job.getContainerObjectId().equals(id)) {
-                return job;
+        for (KettleTaskMap.EntryInfo<Job, JobConfiguration> info : map.cache.asMap().values()) {
+            if (info.entry.getContainerObjectId().equals(id)) {
+                return info.entry;
             }
         }
+
         return null;
     }
 
+    String getStats() {
+        return map.getStats();
+    }
 }
