@@ -48,6 +48,8 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.RESERVEDMAPKEY_PARAMETERS;
+
 /**
  * A Quartz implementation of {@link IScheduler}
  *
@@ -88,6 +90,9 @@ public class QuartzScheduler implements IScheduler {
     private static final Pattern qualifiedDayPattern = Pattern.compile("\\d+#\\d+"); //$NON-NLS-1$
 
     private static final Pattern lastDayPattern = Pattern.compile("\\d+L"); //$NON-NLS-1$
+
+    private static final Set<String> topLevelParameterNames
+            = new HashSet<>(Arrays.asList("user_locale", "job", "directory", RESERVEDMAPKEY_PARAMETERS));
 
     public QuartzScheduler(SchedulerFactory schedulerFactory) {
         this.quartzSchedulerFactory = schedulerFactory;
@@ -133,6 +138,27 @@ public class QuartzScheduler implements IScheduler {
         this.quartzScheduler = quartzScheduler;
     }
 
+    private void fixNestedParameters(Map<String, Serializable> jobParams) {
+        Object obj = jobParams.get(RESERVEDMAPKEY_PARAMETERS);
+        HashMap parameters = new HashMap(jobParams.size());
+        if (obj instanceof HashMap) {
+            parameters = (HashMap) obj;
+        } else {
+            jobParams.put(RESERVEDMAPKEY_PARAMETERS, parameters);
+        }
+
+        if (parameters.size() == 0) {
+            for (Iterator<Map.Entry<String, Serializable>> it = jobParams.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<String, Serializable> entry = it.next();
+                String key = entry.getKey();
+                if (!topLevelParameterNames.contains(key)) {
+                    it.remove();
+                    parameters.put(key, entry.getValue());
+                }
+            }
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -161,6 +187,8 @@ public class QuartzScheduler implements IScheduler {
 
         if (jobParams == null) {
             jobParams = new HashMap<String, Serializable>();
+        } else {
+            fixNestedParameters(jobParams);
         }
 
         jobParams.put(RESERVEDMAPKEY_ACTIONCLASS, action.getName());
@@ -180,6 +208,8 @@ public class QuartzScheduler implements IScheduler {
 
         if (jobParams == null) {
             jobParams = new HashMap<String, Serializable>();
+        } else {
+            fixNestedParameters(jobParams);
         }
 
         jobParams.put(RESERVEDMAPKEY_ACTIONID, actionId);
@@ -243,7 +273,6 @@ public class QuartzScheduler implements IScheduler {
      */
     protected Job createJob(String jobName, Map<String, Serializable> jobParams, IJobTrigger trigger,
                             IBackgroundExecutionStreamProvider outputStreamProvider) throws SchedulerException {
-
         String curUser = getCurrentUser();
 
         // determine if the job params tell us who owns the job
