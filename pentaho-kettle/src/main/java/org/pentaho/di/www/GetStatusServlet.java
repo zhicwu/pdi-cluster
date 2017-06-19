@@ -221,10 +221,10 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                 String name = entry.getName();
                 String id = entry.getId();
                 Trans trans = getTransformationMap().getTransformation(entry);
-                String status = trans.getStatus();
+                String status = trans == null ? "N/A" : trans.getStatus();
 
                 SlaveServerTransStatus sstatus = new SlaveServerTransStatus(name, id, status);
-                sstatus.setPaused(trans.isPaused());
+                sstatus.setPaused(trans == null ? false : trans.isPaused());
                 serverStatus.getTransStatusList().add(sstatus);
             }
 
@@ -232,7 +232,7 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                 String name = entry.getName();
                 String id = entry.getId();
                 Job job = getJobMap().getJob(entry);
-                String status = job.getStatus();
+                String status = job == null ? "N/A" : job.getStatus();
 
                 serverStatus.getJobStatusList().add(new SlaveServerJobStatus(name, id, status));
             }

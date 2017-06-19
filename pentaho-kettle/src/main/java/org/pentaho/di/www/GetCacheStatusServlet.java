@@ -24,6 +24,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.lang.reflect.Method;
 
 /**
  * Get cache status mainly for three different types of resource: transformation, job and data source.
@@ -35,11 +36,50 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
 
     private static final String XML_CONTENT_TYPE = "text/xml";
 
+    private static final String UDJC_CLASS_NAME = "org.pentaho.di.trans.steps.userdefinedjavaclass.UserDefinedJavaClassMeta";
+    private static final String UDJC_METHOD_NAME = "getCacheStats";
+    private static final String DEFAULT_CACHE_STATS = "N/A";
+    private static final String CLASS_CACHE_NAME = "Class Cache: ";
+    private static final String JOB_CACHE_NAME = "Job Cache: ";
+    private static final String TRANS_CACHE_NAME = "Trans Cache: ";
+    private static final String RESOURCE_CACHE_NAME = "Resource Cache: ";
+
     private static final long serialVersionUID = -519824343678414598L;
 
     public static final String CONTEXT_PATH = "/kettle/cache";
     public static final String PARAM_NAME = "name";
     public static final String PARAM_INVALIDATE = "invalidate";
+
+    private String buildCacheStats() {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(CLASS_CACHE_NAME);
+        try {
+            Class clazz = Class.forName(UDJC_CLASS_NAME);
+            Method method = clazz.getMethod(UDJC_METHOD_NAME);
+            sb.append(method.invoke(null));
+        } catch (Exception e) {
+            sb.append(DEFAULT_CACHE_STATS);
+        }
+
+        sb.append('\r').append('\n').append(JOB_CACHE_NAME);
+        try {
+            sb.append(getJobMap().getStats());
+        } catch (Exception e) {
+            sb.append(DEFAULT_CACHE_STATS);
+        }
+
+        sb.append('\r').append('\n').append(TRANS_CACHE_NAME);
+        try {
+            sb.append(getTransformationMap().getStats());
+        } catch (Exception e) {
+            sb.append(DEFAULT_CACHE_STATS);
+        }
+
+        sb.append('\r').append('\n').append(RESOURCE_CACHE_NAME).append(ServerCache.getStats());
+
+        return sb.toString();
+    }
 
     public GetCacheStatusServlet() {
     }
@@ -74,7 +114,7 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
         } else { // just about queries
             if (applyToAll) {
                 // keep the id empty, add information into description
-                result.setMessage(ServerCache.getStats());
+                result.setMessage(buildCacheStats());
             } else {
                 String identity = ServerCache.getCachedIdentity(resourceName);
                 if (!Strings.isNullOrEmpty(identity)) {

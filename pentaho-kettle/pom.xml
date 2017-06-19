@@ -16,7 +16,6 @@
         <main.basedir>${project.parent.basedir}</main.basedir>
         <servlet.version>3.1.0</servlet.version>
         <jersey.version>1.16</jersey.version>
-        <oshi.version>3.2</oshi.version>
     </properties>
 
     <dependencies>
@@ -51,11 +50,6 @@
             <groupId>pentaho-kettle</groupId>
             <artifactId>pdi-pur-plugin</artifactId>
             <version>${pentaho-ce.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.github.dblock</groupId>
-            <artifactId>oshi-core</artifactId>
-            <version>${oshi.version}</version>
         </dependency>
     </dependencies>
     <licenses>

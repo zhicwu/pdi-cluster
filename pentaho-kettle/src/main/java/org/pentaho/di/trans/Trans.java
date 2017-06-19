@@ -670,6 +670,205 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
         startThreads();
     }
 
+    private StepInitThread[] prepareExecutionInSerial() throws KettleException {
+        // Sort the steps from start to finish...
+        //
+        Collections.sort(steps, new Comparator<StepMetaDataCombi>() {
+            @Override
+            public int compare(StepMetaDataCombi c1, StepMetaDataCombi c2) {
+
+                boolean c1BeforeC2 = transMeta.findPrevious(c2.stepMeta, c1.stepMeta);
+                if (c1BeforeC2) {
+                    return -1;
+                } else {
+                    return 1;
+                }
+            }
+        });
+
+        StepInitThread[] initThreads = new StepInitThread[steps.size()];
+
+        // Initialize all the threads...
+        //
+        for (int i = 0; i < steps.size(); i++) {
+            final StepMetaDataCombi sid = steps.get(i);
+
+            // Do the init code in the background!
+            // Init all steps at once, but ALL steps need to finish before we can
+            // continue properly!
+            //
+            StepInitThread thread = new StepInitThread(sid, log);
+            initThreads[i] = thread;
+
+            ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeInitialize.id, thread);
+
+            try {
+                thread.run();
+            } catch (Exception e) {
+                log.logError("Failed to initialize step: " + sid.stepname, e);
+            } finally {
+                try {
+                    ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepAfterInitialize.id, thread);
+                } catch (Exception e) {
+                    log.logError("Error with init thread: " + e.getMessage(), e);
+                }
+            }
+        }
+
+        return initThreads;
+    }
+
+    private StepInitThread[] prepareExecutionInParallel() throws KettleException {
+        StepInitThread[] initThreads = new StepInitThread[steps.size()];
+        Thread[] threads = new Thread[steps.size()];
+
+        // Initialize all the threads...
+        //
+        for (int i = 0; i < steps.size(); i++) {
+            final StepMetaDataCombi sid = steps.get(i);
+
+            // Do the init code in the background!
+            // Init all steps at once, but ALL steps need to finish before we can
+            // continue properly!
+            //
+            StepInitThread initThread = new StepInitThread(sid, log);
+            initThreads[i] = initThread;
+
+            // Put it in a separate thread!
+            //
+            Thread thread = new Thread(initThread);
+            threads[i] = thread;
+            thread.setName("init of " + sid.stepname + "." + sid.copy + " (" + thread.getName() + ")");
+
+            ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeInitialize.id, initThread);
+
+            thread.start();
+        }
+
+        for (int i = 0; i < threads.length; i++) {
+            try {
+                threads[i].join();
+                ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepAfterInitialize.id, initThreads[i]);
+            } catch (Exception ex) {
+                log.logError("Error with init thread: " + ex.getMessage(), ex.getMessage());
+                log.logError(Const.getStackTracker(ex));
+            }
+        }
+
+        return initThreads;
+    }
+
+    private void executeInSerial() throws KettleException {
+        // fallback to multi-thread mode(NORMAL), if there's any step with multiple inputs or outputs
+        // for example, if you run transformation with MergeJoin in single thread, the step will stuck there forever
+        for (StepMetaDataCombi combi : steps) {
+            if (transMeta.findPreviousSteps(combi.stepMeta).size() > 1
+                    || transMeta.findNextSteps(combi.stepMeta).size() > 1) {
+                log.logBasic("Multiple inputs/outputs detected for step [" + combi.stepname + "], switching back to multi-thread mode");
+                // FIXME maybe we need a "mixed" mode to run most steps in one thread, while others in multi-thread mode
+                executeInParallel();
+                return;
+            }
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //
+                    // This is a single threaded version...
+                    //
+
+                    // Always disable thread priority management, it will always slow us
+                    // down...
+                    //
+                    for (StepMetaDataCombi combi : steps) {
+                        combi.step.setUsingThreadPriorityManagment(false);
+
+                        ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeStart.id, combi);
+                        // Call an extension point at the end of the step
+                        //
+                        combi.step.addStepListener(new StepAdapter() {
+
+                            @Override
+                            public void stepFinished(Trans trans, StepMeta stepMeta, StepInterface step) {
+                                try {
+                                    ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepFinished.id, combi);
+                                } catch (KettleException e) {
+                                    throw new RuntimeException("Unexpected error in calling extension point upon step finish", e);
+                                }
+                            }
+
+                        });
+                        combi.step.setRunning(true);
+                        // log.logBasic("Starting step [" + combi.step.getStepname() + "]");
+                    }
+
+                    boolean[] stepDone = new boolean[steps.size()];
+                    int nrDone = 0;
+                    while (nrDone < steps.size() && !isStopped()) {
+                        for (int i = 0; i < steps.size() && !isStopped(); i++) {
+                            StepMetaDataCombi combi = steps.get(i);
+                            if (!stepDone[i]) {
+                                // if (combi.step.canProcessOneRow() ||
+                                // !combi.step.isRunning()) {
+                                // log.logBasic("Running step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size());
+                                boolean cont = combi.step.processRow(combi.meta, combi.data) || combi.step.isStopped();
+                                // log.logBasic("Finish step [" + combi.step.getStepname() + "] - " + (i + 1) + " of " + steps.size() + " " + cont);
+                                if (!cont) {
+                                    stepDone[i] = true;
+                                    nrDone++;
+                                }
+                                // }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    errors.addAndGet(1);
+                    log.logError("Error executing single threaded", e);
+                } finally {
+                    for (int i = 0; i < steps.size(); i++) {
+                        StepMetaDataCombi combi = steps.get(i);
+                        combi.step.dispose(combi.meta, combi.data);
+                        combi.step.markStop();
+                        // log.logBasic(combi.step.getStepname() + " disposed");
+                    }
+                }
+            }
+        }).start();
+    }
+
+    private void executeInParallel() throws KettleException {
+        // Now start all the threads...
+        //
+        for (int i = 0; i < steps.size(); i++) {
+            final StepMetaDataCombi combi = steps.get(i);
+            RunThread runThread = new RunThread(combi);
+            Thread thread = new Thread(runThread);
+            thread.setName(getName() + " - " + combi.stepname);
+            ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeStart.id, combi);
+            // Call an extension point at the end of the step
+            //
+            combi.step.addStepListener(new StepAdapter() {
+
+                @Override
+                public void stepFinished(Trans trans, StepMeta stepMeta, StepInterface step) {
+                    try {
+                        ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepFinished.id, combi);
+                    } catch (KettleException e) {
+                        throw new RuntimeException("Unexpected error in calling extension point upon step finish", e);
+                    }
+                }
+
+            });
+
+            thread.start();
+        }
+
+        heartbeat = startHeartbeat(getHeartbeatIntervalInSeconds());
+    }
+
+
     /**
      * Prepares the transformation for execution. This includes setting the arguments and parameters as well as preparing
      * and tracking the steps and hops in the transformation.
@@ -1099,39 +1298,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             log.logDetailed(BaseMessages.getString(PKG, "Trans.Log.InitialisingSteps", String.valueOf(steps.size())));
         }
 
-        StepInitThread[] initThreads = new StepInitThread[steps.size()];
-        Thread[] threads = new Thread[steps.size()];
-
-        // Initialize all the threads...
-        //
-        for (int i = 0; i < steps.size(); i++) {
-            final StepMetaDataCombi sid = steps.get(i);
-
-            // Do the init code in the background!
-            // Init all steps at once, but ALL steps need to finish before we can
-            // continue properly!
-            //
-            initThreads[i] = new StepInitThread(sid, log);
-
-            // Put it in a separate thread!
-            //
-            threads[i] = new Thread(initThreads[i]);
-            threads[i].setName("init of " + sid.stepname + "." + sid.copy + " (" + threads[i].getName() + ")");
-
-            ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeInitialize.id, initThreads[i]);
-
-            threads[i].start();
-        }
-
-        for (int i = 0; i < threads.length; i++) {
-            try {
-                threads[i].join();
-                ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepAfterInitialize.id, initThreads[i]);
-            } catch (Exception ex) {
-                log.logError("Error with init thread: " + ex.getMessage(), ex.getMessage());
-                log.logError(Const.getStackTracker(ex));
-            }
-        }
+        StepInitThread[] initThreads
+                = transMeta.getTransformationType() == TransMeta.TransformationType.SerialSingleThreaded
+                ? prepareExecutionInSerial() : prepareExecutionInParallel();
 
         initializing = false;
         boolean ok = true;
@@ -1387,92 +1556,11 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
 
         switch (transMeta.getTransformationType()) {
             case Normal:
-
-                // Now start all the threads...
-                //
-                for (int i = 0; i < steps.size(); i++) {
-                    final StepMetaDataCombi combi = steps.get(i);
-                    RunThread runThread = new RunThread(combi);
-                    Thread thread = new Thread(runThread);
-                    thread.setName(getName() + " - " + combi.stepname);
-                    ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepBeforeStart.id, combi);
-                    // Call an extension point at the end of the step
-                    //
-                    combi.step.addStepListener(new StepAdapter() {
-
-                        @Override
-                        public void stepFinished(Trans trans, StepMeta stepMeta, StepInterface step) {
-                            try {
-                                ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.StepFinished.id, combi);
-                            } catch (KettleException e) {
-                                throw new RuntimeException("Unexpected error in calling extension point upon step finish", e);
-                            }
-                        }
-
-                    });
-
-                    thread.start();
-                }
+                executeInParallel();
                 break;
 
             case SerialSingleThreaded:
-                new Thread(new Runnable() {
-                    public void run() {
-                        try {
-                            // Always disable thread priority management, it will always slow us
-                            // down...
-                            //
-                            for (StepMetaDataCombi combi : steps) {
-                                combi.step.setUsingThreadPriorityManagment(false);
-                            }
-
-                            //
-                            // This is a single threaded version...
-                            //
-
-                            // Sort the steps from start to finish...
-                            //
-                            Collections.sort(steps, new Comparator<StepMetaDataCombi>() {
-                                public int compare(StepMetaDataCombi c1, StepMetaDataCombi c2) {
-
-                                    boolean c1BeforeC2 = transMeta.findPrevious(c2.stepMeta, c1.stepMeta);
-                                    if (c1BeforeC2) {
-                                        return -1;
-                                    } else {
-                                        return 1;
-                                    }
-                                }
-                            });
-
-                            boolean[] stepDone = new boolean[steps.size()];
-                            int nrDone = 0;
-                            while (nrDone < steps.size() && !isStopped()) {
-                                for (int i = 0; i < steps.size() && !isStopped(); i++) {
-                                    StepMetaDataCombi combi = steps.get(i);
-                                    if (!stepDone[i]) {
-                                        // if (combi.step.canProcessOneRow() ||
-                                        // !combi.step.isRunning()) {
-                                        boolean cont = combi.step.processRow(combi.meta, combi.data);
-                                        if (!cont) {
-                                            stepDone[i] = true;
-                                            nrDone++;
-                                        }
-                                        // }
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            errors.addAndGet(1);
-                            log.logError("Error executing single threaded", e);
-                        } finally {
-                            for (int i = 0; i < steps.size(); i++) {
-                                StepMetaDataCombi combi = steps.get(i);
-                                combi.step.dispose(combi.meta, combi.data);
-                                combi.step.markStop();
-                            }
-                        }
-                    }
-                }).start();
+                executeInSerial();
                 break;
 
             case SingleThreaded:
@@ -1486,8 +1574,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
         }
 
         ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.TransformationStart.id, this);
-
-        heartbeat = startHeartbeat(getHeartbeatIntervalInSeconds());
 
         if (log.isDetailed()) {
             log.logDetailed(BaseMessages.getString(PKG, "Trans.Log.TransformationHasAllocated", String.valueOf(steps
@@ -2917,7 +3003,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
      * Find the executing step copy for the step with the specified name and copy number
      *
      * @param stepname the step name
-     * @param copynr
+     * @param copyNr
      * @return the executing step found or null if no copy could be found.
      */
     public StepInterface findStepInterface(String stepname, int copyNr) {
@@ -2939,7 +3025,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
      * Find the available executing step copies for the step with the specified name
      *
      * @param stepname the step name
-     * @param copynr
      * @return the list of executing step copies found or null if no steps are available yet (incorrect usage)
      */
     public List<StepInterface> findStepInterfaces(String stepname) {

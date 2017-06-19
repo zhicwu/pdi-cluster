@@ -22,6 +22,10 @@
 
 package org.pentaho.di.trans.steps.userdefinedjavaclass;
 
+import com.google.common.base.Charsets;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.hash.Hashing;
 import org.codehaus.janino.ClassBodyEvaluator;
 import org.codehaus.janino.CompileException;
 import org.codehaus.janino.Parser.ParseException;
@@ -55,9 +59,24 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaInterface {
     private static Class<?> PKG = UserDefinedJavaClassMeta.class; // for i18n purposes, needed by Translator2!!
+
+    private static final int KETTLE_CLASS_CACHE_SIZE
+            = Integer.parseInt(System.getProperty("KETTLE_LISTEN_ANY_LOCAL_ADDRESS", "50"));
+    private static final int KETTLE_CLASS_CACHE_EXPIRE_MINUTE
+            = Integer.parseInt(System.getProperty("KETTLE_CLASS_CACHE_EXPIRE_MINUTE", "61"));
+
+    private static final Cache<Long, Class> classCache = CacheBuilder.newBuilder()
+            .maximumSize(KETTLE_CLASS_CACHE_SIZE)
+            .expireAfterAccess(KETTLE_CLASS_CACHE_EXPIRE_MINUTE, TimeUnit.MINUTES)
+            .recordStats()
+            .build();
 
     public enum ElementNames {
         class_type, class_name, class_source, definitions, definition, fields, field, field_name, field_type,
@@ -103,12 +122,46 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
         }
     }
 
+    public static String getCacheStats() {
+        StringBuilder sb = new StringBuilder(classCache.stats().toString());
+
+        try {
+            Map<Long, Class> map = classCache.asMap();
+            for (Map.Entry<Long, Class> entry : map.entrySet()) {
+                sb.append(Const.CR).append(entry.getKey()).append(':').append(entry.getValue());
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        return sb.toString();
+    }
+
     public UserDefinedJavaClassMeta() {
         super();
         changed = true;
         infoStepDefinitions = new ArrayList<StepDefinition>();
         targetStepDefinitions = new ArrayList<StepDefinition>();
         usageParameters = new ArrayList<UsageParameter>();
+    }
+
+    private Class<?> loadOrCookClass(UserDefinedJavaClassDef def) throws Exception {
+        long hash = Hashing.md5().newHasher()
+                .putString(def.getClassName(), Charsets.UTF_8)
+                .putString(def.getSource(), Charsets.UTF_8).hash().asLong();
+        Class clazz = null;
+        try {
+            clazz = classCache.get(hash, new Callable<Class>() {
+                @Override
+                public Class call() throws Exception {
+                    return cookClass(def);
+                }
+            });
+        } catch (ExecutionException e) {
+            throw new KettleStepException(e.getCause());
+        }
+
+        return clazz;
     }
 
     private Class<?> cookClass(UserDefinedJavaClassDef def) throws CompileException, ParseException,
@@ -145,7 +198,7 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
         for (UserDefinedJavaClassDef def : getDefinitions()) {
             if (def.isActive()) {
                 try {
-                    Class<?> cookedClass = cookClass(def);
+                    Class<?> cookedClass = loadOrCookClass(def);
                     if (def.isTransformClass()) {
                         cookedTransformClass = (Class<TransformClassBase>) cookedClass;
                     }

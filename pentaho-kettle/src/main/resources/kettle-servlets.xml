@@ -15,10 +15,6 @@
         <description>Get cache status of certain type of resource(datasource, job or transformation)</description>
         <classname>org.pentaho.di.www.GetCacheStatusServlet</classname>
     </servlet>
-    <servlet id="health">
-        <description>Get metrics of the whole cluster(if it's master node) or the server(slave)</description>
-        <classname>org.pentaho.di.www.GetHealthServlet</classname>
-    </servlet>
     <servlet id="status">
         <description>Get the status of the server</description>
         <classname>org.pentaho.di.www.GetStatusServlet</classname>
