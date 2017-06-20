@@ -18,6 +18,7 @@ package org.pentaho.di.www;
 
 import com.google.common.base.Strings;
 import org.pentaho.di.cluster.ServerCache;
+import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
 
 import javax.servlet.ServletException;
@@ -25,6 +26,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ConcurrentModificationException;
+import java.util.List;
 
 /**
  * Get cache status mainly for three different types of resource: transformation, job and data source.
@@ -51,13 +54,14 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     public static final String PARAM_TYPE = "type";
     public static final String PARAM_NAME = "name";
     public static final String PARAM_INVALIDATE = "invalidate";
+    public static final String PARAM_CLUSTERWISE = "clusterwise";
 
     public static final String CACHE_TYPE_CLASS = "class";
     public static final String CACHE_TYPE_JOB = "job";
     public static final String CACHE_TYPE_TRANS = "trans";
     public static final String CACHE_TYPE_PACKAGE = "package";
 
-    private void invalidCache(String cacheType, String entryName) {
+    private void invalidCache(String cacheType, String entryName, boolean clusterWise) {
         boolean defaultType = Strings.isNullOrEmpty(cacheType);
 
         if (CACHE_TYPE_CLASS.equalsIgnoreCase(cacheType)) {
@@ -84,6 +88,39 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
                 ServerCache.invalidate(entryName);
             } else {
                 ServerCache.invalidateAll();
+            }
+        }
+
+        if (clusterWise) {
+            // propagate to slave servers if and only if this is master node
+            SlaveServer currentServer = CarteSingleton.getSlaveServerConfig().getSlaveServer();
+
+            if (currentServer.isMaster() || currentServer.getHostname() == null) {
+                List<SlaveServerDetection> detections = getDetections();
+                if (detections != null) {
+                    StringBuilder desc = new StringBuilder(CONTEXT_PATH)
+                            .append('?').append(PARAM_INVALIDATE).append('=').append('Y');
+                    if (cacheType != null) {
+                        desc.append('&').append(PARAM_TYPE).append('=').append(cacheType);
+                    }
+                    if (entryName != null) {
+                        desc.append('&').append(PARAM_NAME).append('=').append(entryName);
+                    }
+                    String serviceDesc = desc.toString();
+
+                    try {
+                        for (SlaveServerDetection detectedServer : detections) {
+                            SlaveServer server = detectedServer.getSlaveServer();
+                            try {
+                                server.execService(serviceDesc);
+                            } catch (Exception e) {
+                                // ignore
+                            }
+                        }
+                    } catch (ConcurrentModificationException e) {
+                        // this is fine as we trade thread-safty for performance
+                    }
+                }
             }
         }
     }
@@ -167,7 +204,7 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
         WebResult result = new WebResult(WebResult.STRING_OK, "", "");
 
         if ("Y".equalsIgnoreCase(request.getParameter(PARAM_INVALIDATE))) {
-            invalidCache(cacheType, entryName);
+            invalidCache(cacheType, entryName, "Y".equalsIgnoreCase(request.getParameter(PARAM_CLUSTERWISE)));
         } else { // just about queries
             fillCacheStats(cacheType, entryName, result);
         }
