@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class KettleTaskMap<E extends HasLogChannelInterface, C> {
     private static final int KETTLE_JOB_TRANS_LIST_SIZE
-            = Integer.parseInt(System.getProperty("KETTLE_JOB_TRANS_LIST_SIZE", "500"));
+            = Integer.parseInt(System.getProperty("KETTLE_JOB_TRANS_LIST_SIZE", "200"));
 
     private static final RemovalListener<CarteObjectEntry, EntryInfo> defaultRemovalListener
             = new RemovalListener<CarteObjectEntry, EntryInfo>() {
@@ -101,6 +101,7 @@ public class KettleTaskMap<E extends HasLogChannelInterface, C> {
         }
 
         this.cache = CacheBuilder.newBuilder()
+                .concurrencyLevel(1)
                 .maximumSize(KETTLE_JOB_TRANS_LIST_SIZE)
                 .expireAfterWrite(objectTimeout, TimeUnit.MINUTES)
                 .removalListener(defaultRemovalListener)

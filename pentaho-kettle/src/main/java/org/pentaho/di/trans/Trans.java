@@ -1296,7 +1296,9 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             log.logDetailed(BaseMessages.getString(PKG, "Trans.Log.InitialisingSteps", String.valueOf(steps.size())));
         }
 
-        StepInitThread[] initThreads = transMeta.getTransformationType() != TransMeta.TransformationType.Normal ? prepareExecutionInSerial() : prepareExecutionInParallel();
+        StepInitThread[] initThreads
+                = transMeta.getTransformationType() == TransMeta.TransformationType.SerialSingleThreaded
+                ? prepareExecutionInSerial() : prepareExecutionInParallel();
 
         setInitializing(false);
         boolean ok = true;

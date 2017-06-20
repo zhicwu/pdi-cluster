@@ -122,6 +122,10 @@ public class UserDefinedJavaClassMeta extends BaseStepMeta implements StepMetaIn
         }
     }
 
+    public static void invalidateCache() {
+        classCache.invalidateAll();
+    }
+
     public static String getCacheStats() {
         StringBuilder sb = new StringBuilder(classCache.stats().toString());
 

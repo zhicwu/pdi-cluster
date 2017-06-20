@@ -166,4 +166,8 @@ public class JobMap {
     String getStats() {
         return map.getStats();
     }
+
+    void cleanUp() {
+        map.cache.cleanUp();
+    }
 }

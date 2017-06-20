@@ -37,48 +37,110 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     private static final String XML_CONTENT_TYPE = "text/xml";
 
     private static final String UDJC_CLASS_NAME = "org.pentaho.di.trans.steps.userdefinedjavaclass.UserDefinedJavaClassMeta";
-    private static final String UDJC_METHOD_NAME = "getCacheStats";
+    private static final String UDJC_READ_METHOD_NAME = "getCacheStats";
+    private static final String UDJC_WRITE_METHOD_NAME = "invalidateCache";
     private static final String DEFAULT_CACHE_STATS = "N/A";
     private static final String CLASS_CACHE_NAME = "Class Cache: ";
     private static final String JOB_CACHE_NAME = "Job Cache: ";
     private static final String TRANS_CACHE_NAME = "Trans Cache: ";
-    private static final String RESOURCE_CACHE_NAME = "Resource Cache: ";
+    private static final String PACKAGE_CACHE_NAME = "Package Cache: ";
 
     private static final long serialVersionUID = -519824343678414598L;
 
     public static final String CONTEXT_PATH = "/kettle/cache";
+    public static final String PARAM_TYPE = "type";
     public static final String PARAM_NAME = "name";
     public static final String PARAM_INVALIDATE = "invalidate";
 
-    private String buildCacheStats() {
+    public static final String CACHE_TYPE_CLASS = "class";
+    public static final String CACHE_TYPE_JOB = "job";
+    public static final String CACHE_TYPE_TRANS = "trans";
+    public static final String CACHE_TYPE_PACKAGE = "package";
+
+    private void invalidCache(String cacheType, String entryName) {
+        boolean defaultType = Strings.isNullOrEmpty(cacheType);
+
+        if (CACHE_TYPE_CLASS.equalsIgnoreCase(cacheType)) {
+            try {
+                Class clazz = Class.forName(UDJC_CLASS_NAME);
+                Method method = clazz.getMethod(UDJC_WRITE_METHOD_NAME);
+                method.invoke(null);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        // for job and trans, only do clean up
+        if (CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
+            getJobMap().cleanUp();
+        }
+
+        if (CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
+            getTransformationMap().cleanUp();
+        }
+
+        if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
+            if (!Strings.isNullOrEmpty(entryName)) {
+                ServerCache.invalidate(entryName);
+            } else {
+                ServerCache.invalidateAll();
+            }
+        }
+    }
+
+    private void fillCacheStats(String cacheType, String entryName, WebResult result) {
         StringBuilder sb = new StringBuilder();
+        boolean all = Strings.isNullOrEmpty(cacheType);
 
-        sb.append(CLASS_CACHE_NAME);
-        try {
-            Class clazz = Class.forName(UDJC_CLASS_NAME);
-            Method method = clazz.getMethod(UDJC_METHOD_NAME);
-            sb.append(method.invoke(null));
-        } catch (Exception e) {
-            sb.append(DEFAULT_CACHE_STATS);
+        if (all || CACHE_TYPE_CLASS.equalsIgnoreCase(cacheType)) {
+            sb.append(CLASS_CACHE_NAME);
+            try {
+                Class clazz = Class.forName(UDJC_CLASS_NAME);
+                Method method = clazz.getMethod(UDJC_READ_METHOD_NAME);
+                sb.append(method.invoke(null));
+            } catch (Exception e) {
+                sb.append(DEFAULT_CACHE_STATS);
+            }
+            sb.append('\r').append('\n');
         }
 
-        sb.append('\r').append('\n').append(JOB_CACHE_NAME);
-        try {
-            sb.append(getJobMap().getStats());
-        } catch (Exception e) {
-            sb.append(DEFAULT_CACHE_STATS);
+        if (all || CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
+            sb.append(JOB_CACHE_NAME);
+            try {
+                sb.append(getJobMap().getStats());
+            } catch (Exception e) {
+                sb.append(DEFAULT_CACHE_STATS);
+            }
+            sb.append('\r').append('\n');
         }
 
-        sb.append('\r').append('\n').append(TRANS_CACHE_NAME);
-        try {
-            sb.append(getTransformationMap().getStats());
-        } catch (Exception e) {
-            sb.append(DEFAULT_CACHE_STATS);
+        if (all || CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
+            sb.append(TRANS_CACHE_NAME);
+            try {
+                sb.append(getTransformationMap().getStats());
+            } catch (Exception e) {
+                sb.append(DEFAULT_CACHE_STATS);
+            }
+            sb.append('\r').append('\n');
         }
 
-        sb.append('\r').append('\n').append(RESOURCE_CACHE_NAME).append(ServerCache.getStats());
+        if (all || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
+            if (!Strings.isNullOrEmpty(entryName)) {
+                String identity = ServerCache.getCachedIdentity(entryName);
+                if (!Strings.isNullOrEmpty(identity)) {
+                    result.setId(identity);
+                } else {
+                    result.setResult(WebResult.STRING_ERROR);
+                    result.setMessage(
+                            new StringBuilder().append('[').append(entryName).append("] not found").toString());
+                    return;
+                }
+            } else {
+                sb.append(PACKAGE_CACHE_NAME).append(ServerCache.getStats());
+            }
+        }
 
-        return sb.toString();
+        result.setMessage(sb.toString());
     }
 
     public GetCacheStatusServlet() {
@@ -99,32 +161,15 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
         response.setContentType(XML_CONTENT_TYPE);
         response.setCharacterEncoding(Const.XML_ENCODING);
 
-        String resourceName = request.getParameter(PARAM_NAME);
-        boolean applyToAll = Strings.isNullOrEmpty(resourceName);
-        boolean invalidate = "Y".equalsIgnoreCase(request.getParameter(PARAM_INVALIDATE));
+        String cacheType = request.getParameter(PARAM_TYPE);
+        String entryName = request.getParameter(PARAM_NAME);
 
         WebResult result = new WebResult(WebResult.STRING_OK, "", "");
 
-        if (invalidate) {
-            if (applyToAll) {
-                ServerCache.invalidateAll();
-            } else {
-                ServerCache.invalidate(resourceName);
-            }
+        if ("Y".equalsIgnoreCase(request.getParameter(PARAM_INVALIDATE))) {
+            invalidCache(cacheType, entryName);
         } else { // just about queries
-            if (applyToAll) {
-                // keep the id empty, add information into description
-                result.setMessage(buildCacheStats());
-            } else {
-                String identity = ServerCache.getCachedIdentity(resourceName);
-                if (!Strings.isNullOrEmpty(identity)) {
-                    result.setId(identity);
-                } else {
-                    result.setResult(WebResult.STRING_ERROR);
-                    result.setMessage(
-                            new StringBuilder().append('[').append(resourceName).append("] not found").toString());
-                }
-            }
+            fillCacheStats(cacheType, entryName, result);
         }
 
         response.getWriter().print(result.getXML());

@@ -34,7 +34,6 @@ import org.pentaho.di.core.xml.XMLHandler;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.job.Job;
 
-import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -256,7 +255,7 @@ public class GetJobStatusServlet extends BaseHttpServlet implements CartePluginI
                 // Also set the result object...
                 //
                 Result jobResult = job.getResult();
-                if (!includeResult && jobResult != null){
+                if (!includeResult && jobResult != null) {
                     jobResult.setRows(new ArrayList<>(0));
                 }
 
