@@ -69,6 +69,20 @@
             <artifactId>spring-tx</artifactId>
             <version>${spring.version}</version>
         </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>pdi-platform-plugin</artifactId>
+            <version>${pentaho-ce.version}</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/lib/DIS-${pentaho-ce.version}.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>pentaho</groupId>
+            <artifactId>kettle5-log4j-plugin</artifactId>
+            <version>${pentaho-ce.version}</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/lib/kettle5-log4j-plugin-${pentaho-ce.version}.jar</systemPath>
+        </dependency>
     </dependencies>
     <licenses>
         <license>
