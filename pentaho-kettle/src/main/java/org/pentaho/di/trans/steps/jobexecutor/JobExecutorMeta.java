@@ -641,17 +641,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                             // mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
                             mappingJobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
-                            // try without extension
-                            if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
-                                try {
-                                    tmpFilename = tmpFilename.substring(0,
-                                            tmpFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
-                                    RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                                    mappingJobMeta = rep.loadJob(tmpFilename, dir, null, null);
-                                } catch (KettleException ke2) {
-                                    // fall back to try loading from file system (mappingJobMeta is going to be null)
-                                }
-                            }
+                            // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
                     if (mappingJobMeta == null) {

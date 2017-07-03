@@ -1261,17 +1261,7 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                             // transMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
                             transMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
-                            // try without extension
-                            if (realFilename.endsWith(Const.STRING_TRANS_DEFAULT_EXT)) {
-                                try {
-                                    tmpFilename = tmpFilename.substring(0,
-                                            tmpFilename.indexOf("." + Const.STRING_TRANS_DEFAULT_EXT));
-                                    RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                                    transMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
-                                } catch (KettleException ke2) {
-                                    // fall back to try loading from file system (transMeta is going to be null)
-                                }
-                            }
+                            // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
                     if (transMeta == null) {

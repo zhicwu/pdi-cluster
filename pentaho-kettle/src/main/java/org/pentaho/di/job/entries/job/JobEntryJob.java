@@ -1236,17 +1236,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             // jobMeta = rep.loadJob(tmpFilename, dir, null, null);
                             jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
                         } catch (KettleException ke) {
-                            // try without extension
-                            if (realFilename.endsWith(Const.STRING_JOB_DEFAULT_EXT)) {
-                                try {
-                                    tmpFilename = tmpFilename.substring(0,
-                                            tmpFilename.indexOf("." + Const.STRING_JOB_DEFAULT_EXT));
-                                    RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                                    jobMeta = rep.loadJob(tmpFilename, dir, null, null);
-                                } catch (KettleException ke2) {
-                                    // fall back to try loading from file system (mappingJobMeta is going to be null)
-                                }
-                            }
+                            // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
                     if (jobMeta == null) {

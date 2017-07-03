@@ -381,7 +381,7 @@ public class PdiAction implements IAction, IVarArgsAction, ILoggingAction, RowLi
             jobMeta = repository.loadJob(new StringObjectId((String) jobFile.getId()), null);
         } catch (Throwable e) {
             throw new ActionExecutionException(org.pentaho.platform.plugin.kettle.messages.Messages.getInstance()
-                    .getErrorString("PdiAction.ERROR_0006_FAILED_TRANSMETA_CREATION", directory, transformation), e); //$NON-NLS-1$
+                    .getErrorString("PdiAction.ERROR_0007_FAILED_JOBMETA_CREATION", directory, job), e); //$NON-NLS-1$
         }
         if (arguments != null) {
             jobMeta.setArguments(arguments);

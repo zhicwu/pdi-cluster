@@ -20,6 +20,7 @@ import com.google.common.base.Strings;
 import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.resource.ResourceDefinitionHelper;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -30,7 +31,7 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 
 /**
- * Get cache status mainly for three different types of resource: transformation, job and data source.
+ * Get cache status mainly for four different types of resource: class, transformation, job, metadata and serialized package.
  *
  * @author Zhichun Wu
  */
@@ -46,6 +47,7 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     private static final String CLASS_CACHE_NAME = "Class Cache: ";
     private static final String JOB_CACHE_NAME = "Job Cache: ";
     private static final String TRANS_CACHE_NAME = "Trans Cache: ";
+    private static final String META_CACHE_NAME = "Meta Cache: ";
     private static final String PACKAGE_CACHE_NAME = "Package Cache: ";
 
     private static final long serialVersionUID = -519824343678414598L;
@@ -54,14 +56,14 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     public static final String PARAM_TYPE = "type";
     public static final String PARAM_NAME = "name";
     public static final String PARAM_INVALIDATE = "invalidate";
-    public static final String PARAM_CLUSTERWISE = "clusterwise";
 
     public static final String CACHE_TYPE_CLASS = "class";
     public static final String CACHE_TYPE_JOB = "job";
     public static final String CACHE_TYPE_TRANS = "trans";
+    public static final String CACHE_TYPE_META = "meta";
     public static final String CACHE_TYPE_PACKAGE = "package";
 
-    private void invalidCache(String cacheType, String entryName, boolean clusterWise) {
+    private void invalidateCache(String cacheType, String entryName) {
         boolean defaultType = Strings.isNullOrEmpty(cacheType);
 
         if (CACHE_TYPE_CLASS.equalsIgnoreCase(cacheType)) {
@@ -72,18 +74,13 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             } catch (Exception e) {
                 // ignore
             }
-        }
-
-        // for job and trans, only do clean up
-        if (CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
+        } else if (CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
             getJobMap().cleanUp();
-        }
-
-        if (CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
+        } else if (CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
             getTransformationMap().cleanUp();
-        }
-
-        if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
+        } else if (CACHE_TYPE_META.equalsIgnoreCase(cacheType)) {
+            ResourceDefinitionHelper.invalidateCache(entryName);
+        } else if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
             if (!Strings.isNullOrEmpty(entryName)) {
                 ServerCache.invalidate(entryName);
             } else {
@@ -91,35 +88,33 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             }
         }
 
-        if (clusterWise) {
-            // propagate to slave servers if and only if this is master node
-            SlaveServer currentServer = CarteSingleton.getSlaveServerConfig().getSlaveServer();
+        // propagate to slave servers if and only if this is master node
+        SlaveServer currentServer = CarteSingleton.getSlaveServerConfig().getSlaveServer();
 
-            if (currentServer.isMaster() || currentServer.getHostname() == null) {
-                List<SlaveServerDetection> detections = getDetections();
-                if (detections != null) {
-                    StringBuilder desc = new StringBuilder(CONTEXT_PATH)
-                            .append('?').append(PARAM_INVALIDATE).append('=').append('Y');
-                    if (cacheType != null) {
-                        desc.append('&').append(PARAM_TYPE).append('=').append(cacheType);
-                    }
-                    if (entryName != null) {
-                        desc.append('&').append(PARAM_NAME).append('=').append(entryName);
-                    }
-                    String serviceDesc = desc.toString();
+        if (currentServer.isMaster() || currentServer.getHostname() == null) {
+            List<SlaveServerDetection> detections = getDetections();
+            if (detections != null) {
+                StringBuilder desc = new StringBuilder(CONTEXT_PATH)
+                        .append('?').append(PARAM_INVALIDATE).append('=').append('Y');
+                if (cacheType != null) {
+                    desc.append('&').append(PARAM_TYPE).append('=').append(cacheType);
+                }
+                if (entryName != null) {
+                    desc.append('&').append(PARAM_NAME).append('=').append(entryName);
+                }
+                String serviceDesc = desc.toString();
 
-                    try {
-                        for (SlaveServerDetection detectedServer : detections) {
-                            SlaveServer server = detectedServer.getSlaveServer();
-                            try {
-                                server.execService(serviceDesc);
-                            } catch (Exception e) {
-                                // ignore
-                            }
+                try {
+                    for (SlaveServerDetection detectedServer : detections) {
+                        SlaveServer server = detectedServer.getSlaveServer();
+                        try {
+                            server.execService(serviceDesc);
+                        } catch (Exception e) {
+                            // ignore
                         }
-                    } catch (ConcurrentModificationException e) {
-                        // this is fine as we trade thread-safty for performance
                     }
+                } catch (ConcurrentModificationException e) {
+                    // this is fine as we trade thread-safty for performance
                 }
             }
         }
@@ -155,6 +150,16 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             sb.append(TRANS_CACHE_NAME);
             try {
                 sb.append(getTransformationMap().getStats());
+            } catch (Exception e) {
+                sb.append(DEFAULT_CACHE_STATS);
+            }
+            sb.append('\r').append('\n');
+        }
+
+        if (all || CACHE_TYPE_META.equalsIgnoreCase(cacheType)) {
+            sb.append(META_CACHE_NAME);
+            try {
+                sb.append(ResourceDefinitionHelper.getCacheStats());
             } catch (Exception e) {
                 sb.append(DEFAULT_CACHE_STATS);
             }
@@ -204,7 +209,7 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
         WebResult result = new WebResult(WebResult.STRING_OK, "", "");
 
         if ("Y".equalsIgnoreCase(request.getParameter(PARAM_INVALIDATE))) {
-            invalidCache(cacheType, entryName, "Y".equalsIgnoreCase(request.getParameter(PARAM_CLUSTERWISE)));
+            invalidateCache(cacheType, entryName);
         } else { // just about queries
             fillCacheStats(cacheType, entryName, result);
         }

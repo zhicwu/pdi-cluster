@@ -664,6 +664,8 @@ public class TransMeta extends AbstractMeta
 
         try {
             TransMeta transMeta = (TransMeta) super.clone();
+            // transMeta.setName(this.getName());
+            // transMeta.setFilename(this.getFilename());
             if (doClear) {
                 transMeta.clear();
             } else {
@@ -3347,7 +3349,6 @@ public class TransMeta extends AbstractMeta
     /**
      * Checks if any selected step has been used in a hop or not.
      *
-     * @param stepMeta The step queried.
      * @return true if a step is used in a hop (active or not), false otherwise
      */
     public boolean isAnySelectedStepUsedInTransHops() {

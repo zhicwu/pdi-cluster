@@ -56,6 +56,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.KEY_ETL_JOB_ID;
+import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.RESERVEDMAPKEY_PARAMETERS;
+
 /**
  * A Quartz job that is responsible for executing the {@link IAction} referred to in the job context.
  *
@@ -225,7 +228,11 @@ public class ActionAdapterQuartzJob implements Job {
                 boolean waitForFileCreated = false;
                 OutputStream stream = null;
 
-                if (streamProvider != null) {
+                // FIXME this is rude but I really want an empty file created each time after running a job/trans
+                Object map = params.get(RESERVEDMAPKEY_PARAMETERS);
+                boolean isManaged = map instanceof Map ? ((Map) map).containsKey(KEY_ETL_JOB_ID) : false;
+
+                if (!isManaged && streamProvider != null) {
                     actionParams.remove("inputStream");
                     if (actionBean instanceof IStreamingAction) {
                         streamProvider.setStreamingAction((IStreamingAction) actionBean);

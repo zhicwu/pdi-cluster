@@ -295,8 +295,8 @@ public class JobMeta extends AbstractMeta
      * and then performing a string comparison, ultimately returning the result of the filename string comparison.
      * </ol>
      *
-     * @param t1 the first job to compare
-     * @param t2 the second job to compare
+     * @param j1 the first job to compare
+     * @param j2 the second job to compare
      * @return 0 if the two jobs are equal, 1 or -1 depending on the values (see description above)
      */
     public int compare(JobMeta j1, JobMeta j2) {
@@ -412,6 +412,8 @@ public class JobMeta extends AbstractMeta
     public Object realClone(boolean doClear) {
         try {
             JobMeta jobMeta = (JobMeta) super.clone();
+            // jobMeta.setName(this.getName());
+            // jobMeta.setFilename(this.getFilename());
             if (doClear) {
                 jobMeta.clear();
             } else {
@@ -555,7 +557,7 @@ public class JobMeta extends AbstractMeta
     }
 
     /**
-     * Gets the job filter extensions. For JobMeta, this method returns the value of {@link Const.STRING_JOB_FILTER_EXT}
+     * Gets the job filter extensions. For JobMeta, this method returns the value of STRING_JOB_FILTER_EXT
      *
      * @return the filter extensions
      * @see org.pentaho.di.core.EngineMetaInterface#getFilterExtensions()
