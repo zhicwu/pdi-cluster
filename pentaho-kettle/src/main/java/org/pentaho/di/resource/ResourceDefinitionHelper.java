@@ -64,7 +64,7 @@ public final class ResourceDefinitionHelper {
 
     private static final Cache<String, AbstractMeta> metaCache = CacheBuilder.newBuilder()
             .maximumSize(META_CACHE_SIZE)
-            .expireAfterWrite(META_EXPIRATION_MINUTE, TimeUnit.MINUTES)
+            .expireAfterAccess(META_EXPIRATION_MINUTE, TimeUnit.MINUTES)
             .recordStats()
             .build();
 
