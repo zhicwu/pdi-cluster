@@ -243,16 +243,16 @@ public class SlaveServerTransStatus {
     }
 
     public boolean isRunning() {
-        return getStatusDescription().equalsIgnoreCase(Trans.STRING_RUNNING)
-                || getStatusDescription().equalsIgnoreCase(Trans.STRING_INITIALIZING);
+        return Trans.STRING_RUNNING.equalsIgnoreCase(statusDescription)
+                || Trans.STRING_INITIALIZING.equalsIgnoreCase(statusDescription);
     }
 
     public boolean isStopped() {
-        return getStatusDescription().equalsIgnoreCase(Trans.STRING_STOPPED);
+        return Trans.STRING_STOPPED.equalsIgnoreCase(statusDescription);
     }
 
     public boolean isWaiting() {
-        return getStatusDescription().equalsIgnoreCase(Trans.STRING_WAITING);
+        return Trans.STRING_WAITING.equalsIgnoreCase(statusDescription);
     }
 
     public long getNrStepErrors() {
@@ -368,7 +368,7 @@ public class SlaveServerTransStatus {
     }
 
     /**
-     * @param the logDate
+     * @param logDate log date
      */
     public void setLogDate(Date logDate) {
         this.logDate = logDate;

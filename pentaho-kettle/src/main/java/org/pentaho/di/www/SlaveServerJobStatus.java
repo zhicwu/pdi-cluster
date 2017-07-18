@@ -192,12 +192,12 @@ public class SlaveServerJobStatus {
     }
 
     public boolean isRunning() {
-        return getStatusDescription().equalsIgnoreCase(Trans.STRING_RUNNING)
-                || getStatusDescription().equalsIgnoreCase(Trans.STRING_INITIALIZING);
+        return Trans.STRING_RUNNING.equalsIgnoreCase(statusDescription)
+                || Trans.STRING_INITIALIZING.equalsIgnoreCase(statusDescription);
     }
 
     public boolean isWaiting() {
-        return getStatusDescription().equalsIgnoreCase(Trans.STRING_WAITING);
+        return Trans.STRING_WAITING.equalsIgnoreCase(statusDescription);
     }
 
     /**
@@ -250,7 +250,7 @@ public class SlaveServerJobStatus {
     }
 
     /**
-     * @param the logDate
+     * @param logDate log date
      */
     public void setLogDate(Date logDate) {
         this.logDate = logDate;
