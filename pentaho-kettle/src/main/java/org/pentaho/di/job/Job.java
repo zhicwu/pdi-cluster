@@ -1713,11 +1713,12 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
     public static String sendToSlaveServer(JobMeta jobMeta, JobExecutionConfiguration executionConfiguration,
                                            Repository repository, IMetaStore metaStore) throws KettleException {
         SlaveServer slaveServer = executionConfiguration.getRemoteServer();
+        String jobName = jobMeta.getName();
 
         if (slaveServer == null) {
             throw new KettleException(BaseMessages.getString(PKG, "Job.Log.NoSlaveServerSpecified"));
         }
-        if (Utils.isEmpty(jobMeta.getName())) {
+        if (Utils.isEmpty(jobName)) {
             throw new KettleException(BaseMessages.getString(PKG, "Job.Log.UniqueJobName"));
         }
 
@@ -1788,8 +1789,12 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
             // Start the job
             //
+            slaveServer.getLogChannel().logBasic(new StringBuilder()
+                    .append("Starting remote job[name='").append(jobName)
+                    .append("', id='").append(carteObjectId).append("'...").toString());
+
             String reply =
-                    slaveServer.execService(StartJobServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(jobMeta.getName(),
+                    slaveServer.execService(StartJobServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(jobName,
                             "UTF-8") + "&xml=Y&id=" + carteObjectId,
                             ServerCache.buildRequestParameters(entry.getKey(),
                                     executionConfiguration.getParams(), executionConfiguration.getVariables()));
@@ -1797,8 +1802,12 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                 ServerCache.invalidate(jobMeta, executionConfiguration.getParams(), slaveServer);
 
-                throw new KettleException("There was an error starting the job on the remote server: " + Const.CR + webResult
-                        .getMessage());
+                throw new KettleException(
+                        new StringBuilder().append("There was an error starting the job [")
+                                .append("name='").append(jobName)
+                                .append("', id='").append(carteObjectId)
+                                .append("'] on the remote server: ").append(Const.CR)
+                                .append(webResult.getMessage()).toString());
             }
             return carteObjectId;
         } catch (KettleException ke) {

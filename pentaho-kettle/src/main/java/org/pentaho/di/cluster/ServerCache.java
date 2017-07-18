@@ -208,7 +208,7 @@ public final class ServerCache {
                                         .append(resourceName).append('=').append(identity)
                                         .append(" is invalidated due to status [")
                                         .append(status.getStatusDescription()).append(']').toString());
-                        invalidate(resourceName);
+                        invalidate(meta, params, server);
                         identity = null;
                     }
                 } else if (meta instanceof TransMeta) {
@@ -219,7 +219,7 @@ public final class ServerCache {
                                         .append(resourceName).append('=').append(identity)
                                         .append(" is invalidated due to status [")
                                         .append(status.getStatusDescription()).append(']').toString());
-                        invalidate(resourceName);
+                        invalidate(meta, params, server);
                         identity = null;
                     }
                 } // who knows if someday there's a new type...
@@ -248,14 +248,23 @@ public final class ServerCache {
     }
 
     public static void invalidate(AbstractMeta meta, Map<String, String> params, SlaveServer server) {
-        invalidate(buildResourceName(meta, params, server));
+        String resourceName = buildResourceName(meta, params, server);
+        // invalidate remote cache first
+        try {
+            server.execService(GetCacheStatusServlet.CONTEXT_PATH + "/?invalidate=Y&name="
+                    + URLEncoder.encode(resourceName, "UTF-8"));
+        } catch (Exception e) {
+            // ignore exception
+        }
+
+        invalidateInLocal(resourceName);
     }
 
-    public static void invalidate(String resourceName) {
+    public static void invalidateInLocal(String resourceName) {
         resourceCache.invalidate(resourceName);
     }
 
-    public static void invalidateAll() {
+    public static void invalidateAllInLocal() {
         resourceCache.invalidateAll();
     }
 

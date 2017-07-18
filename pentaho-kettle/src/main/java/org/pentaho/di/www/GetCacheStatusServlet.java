@@ -82,9 +82,9 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             ResourceDefinitionHelper.invalidateCache(entryName);
         } else if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
             if (!Strings.isNullOrEmpty(entryName)) {
-                ServerCache.invalidate(entryName);
+                ServerCache.invalidateInLocal(entryName);
             } else {
-                ServerCache.invalidateAll();
+                ServerCache.invalidateAllInLocal();
             }
         }
 

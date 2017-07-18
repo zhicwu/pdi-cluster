@@ -256,7 +256,8 @@ public class StartJobServlet extends BaseHttpServlet implements CartePluginInter
                             + BaseMessages.getString(PKG, "JobStatusServlet.BackToJobStatusPage") + "</a><p>");
                 }
             } else {
-                String message = BaseMessages.getString(PKG, "StartJobServlet.Log.SpecifiedJobNotFound", jobName);
+                String message = BaseMessages.getString(PKG, "StartJobServlet.Log.SpecifiedJobNotFound",
+                        new StringBuilder().append("name='").append(jobName).append("', id='").append(id).append("'").toString());
                 if (useXML) {
                     out.println(new WebResult(WebResult.STRING_ERROR, message));
                 } else {

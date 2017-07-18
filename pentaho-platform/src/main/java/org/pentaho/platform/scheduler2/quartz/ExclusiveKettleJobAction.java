@@ -292,10 +292,8 @@ public class ExclusiveKettleJobAction {
             } catch (Throwable t) {
                 throw new JobExecutionException(new StringBuilder()
                         .append("Failed to kill job [")
-                        .append(carteObj.getName())
-                        .append('(')
-                        .append(carteObj.getId())
-                        .append(")] when running job [")
+                        .append(carteObj)
+                        .append("] when running job [")
                         .append(jobKey)
                         .append(']')
                         .toString(), t);

@@ -4214,11 +4214,12 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
     public static String sendToSlaveServer(TransMeta transMeta, TransExecutionConfiguration executionConfiguration,
                                            Repository repository, IMetaStore metaStore) throws KettleException {
         SlaveServer slaveServer = executionConfiguration.getRemoteServer();
+        String transName = transMeta.getName();
 
         if (slaveServer == null) {
             throw new KettleException("No slave server specified");
         }
-        if (Utils.isEmpty(transMeta.getName())) {
+        if (Utils.isEmpty(transName)) {
             throw new KettleException("The transformation needs a name to uniquely identify it by on the remote server.");
         }
 
@@ -4296,15 +4297,22 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
 
             // Prepare the transformation
             //
-            String reply =
-                    slaveServer.execService(PrepareExecutionTransServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(transMeta
-                            .getName(), "UTF-8") + "&xml=Y&id=" + carteObjectId);
+            slaveServer.getLogChannel().logBasic(new StringBuilder()
+                    .append("Prepare remote transformation[name='").append(transName)
+                    .append("', id='").append(carteObjectId).append("'...").toString());
+
+            String reply = slaveServer.execService(PrepareExecutionTransServlet.CONTEXT_PATH + "/?name="
+                    + URLEncoder.encode(transName, "UTF-8") + "&xml=Y&id=" + carteObjectId);
             WebResult webResult = WebResult.fromXMLString(reply);
             if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                 ServerCache.invalidate(transMeta, executionConfiguration.getParams(), slaveServer);
 
-                throw new KettleException("There was an error preparing the transformation for excution on the remote server: "
-                        + Const.CR + webResult.getMessage());
+                throw new KettleException(
+                        new StringBuilder().append("There was an error preparing the transformation [")
+                                .append("name='").append(transName)
+                                .append("', id='").append(carteObjectId)
+                                .append("'] for execution on the remote server: ").append(Const.CR)
+                                .append(webResult.getMessage()).toString());
             }
 
             // Start the transformation
