@@ -58,8 +58,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     public static final String PARAM_INVALIDATE = "invalidate";
 
     public static final String CACHE_TYPE_CLASS = "class";
-    public static final String CACHE_TYPE_JOB = "job";
-    public static final String CACHE_TYPE_TRANS = "trans";
     public static final String CACHE_TYPE_META = "meta";
     public static final String CACHE_TYPE_PACKAGE = "package";
 
@@ -74,10 +72,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             } catch (Exception e) {
                 // ignore
             }
-        } else if (CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
-            getJobMap().cleanUp();
-        } else if (CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
-            getTransformationMap().cleanUp();
         } else if (CACHE_TYPE_META.equalsIgnoreCase(cacheType)) {
             ResourceDefinitionHelper.invalidateCache(entryName);
         } else if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
@@ -130,26 +124,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
                 Class clazz = Class.forName(UDJC_CLASS_NAME);
                 Method method = clazz.getMethod(UDJC_READ_METHOD_NAME);
                 sb.append(method.invoke(null));
-            } catch (Exception e) {
-                sb.append(DEFAULT_CACHE_STATS);
-            }
-            sb.append('\r').append('\n');
-        }
-
-        if (all || CACHE_TYPE_JOB.equalsIgnoreCase(cacheType)) {
-            sb.append(JOB_CACHE_NAME);
-            try {
-                sb.append(getJobMap().getStats());
-            } catch (Exception e) {
-                sb.append(DEFAULT_CACHE_STATS);
-            }
-            sb.append('\r').append('\n');
-        }
-
-        if (all || CACHE_TYPE_TRANS.equalsIgnoreCase(cacheType)) {
-            sb.append(TRANS_CACHE_NAME);
-            try {
-                sb.append(getTransformationMap().getStats());
             } catch (Exception e) {
                 sb.append(DEFAULT_CACHE_STATS);
             }

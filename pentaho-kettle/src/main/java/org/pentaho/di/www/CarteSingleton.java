@@ -64,7 +64,7 @@ public class CarteSingleton {
         detections = new ArrayList<SlaveServerDetection>();
         socketRepository = new SocketRepository(log);
 
-        // installPurgeTimer(config, log, transformationMap, jobMap);
+        installPurgeTimer(config, log, transformationMap, jobMap);
 
         SlaveServer slaveServer = config.getSlaveServer();
         if (slaveServer != null) {
