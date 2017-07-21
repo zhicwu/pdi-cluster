@@ -477,7 +477,12 @@ public class PdiAction implements IAction, IVarArgsAction, ILoggingAction, RowLi
                 localTrans.shareVariablesWith(transMeta);
                 String carteObjectId = UUID.randomUUID().toString();
                 localTrans.setContainerObjectId(carteObjectId);
-                CarteSingleton.getInstance().getTransformationMap().addTransformation(getTransformationName(carteObjectId),
+                String transName = getTransformationName(carteObjectId);
+                log.info(new StringBuilder()
+                        .append("Enlisting new transformation [nameInRepo=").append(transName)
+                        .append("], nameInMeta=[").append(transMeta.getName())
+                        .append("], carteObjectId=[").append(carteObjectId).append("]...").toString());
+                CarteSingleton.getInstance().getTransformationMap().addTransformation(transName,
                         carteObjectId, localTrans, new TransConfiguration(localTrans.getTransMeta(), transExConfig));
 
             } catch (Exception e) {
@@ -712,7 +717,12 @@ public class PdiAction implements IAction, IVarArgsAction, ILoggingAction, RowLi
                 localJob.shareVariablesWith(jobMeta);
                 String carteObjectId = UUID.randomUUID().toString();
                 localJob.setContainerObjectId(carteObjectId);
-                CarteSingleton.getInstance().getJobMap().addJob(getJobName(carteObjectId), carteObjectId, localJob,
+                String jobName = getJobName(carteObjectId);
+                log.info(new StringBuilder()
+                        .append("Enlisting new job [nameInRepo=").append(jobName)
+                        .append("], nameInMeta=[").append(jobMeta.getName())
+                        .append("], carteObjectId=[").append(carteObjectId).append("]...").toString());
+                CarteSingleton.getInstance().getJobMap().addJob(jobName, carteObjectId, localJob,
                         new JobConfiguration(localJob.getJobMeta(), jobExConfig));
 
             } catch (Exception e) {
