@@ -92,12 +92,18 @@ public final class ServerCache {
             sb.append(jobId.replace('\t', '-'));
         }
 
+        /*
+
+        Too bad this usually not working properly which leads to additional entries in cache
+        Worse than that, I observed modifiedDate is updated(for multiple jobs) during runtime for no reason
+
         Date modifiedDate = meta.getModifiedDate();
         Date creationDate = meta.getCreatedDate();
         sb.append('-').append(
                 (modifiedDate != null && creationDate != null && modifiedDate.after(creationDate))
                         ? modifiedDate.getTime()
                         : (creationDate == null ? -1 : creationDate.getTime()));
+        */
 
         String host = server == null ? null : server.getHostname();
         String port = server == null ? null : server.getPort();
