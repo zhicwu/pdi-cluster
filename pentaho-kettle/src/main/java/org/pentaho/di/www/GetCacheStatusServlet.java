@@ -45,9 +45,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
     private static final String UDJC_WRITE_METHOD_NAME = "invalidateCache";
     private static final String DEFAULT_CACHE_STATS = "N/A";
     private static final String CLASS_CACHE_NAME = "Class Cache: ";
-    private static final String JOB_CACHE_NAME = "Job Cache: ";
-    private static final String TRANS_CACHE_NAME = "Trans Cache: ";
-    private static final String META_CACHE_NAME = "Meta Cache: ";
     private static final String PACKAGE_CACHE_NAME = "Package Cache: ";
 
     private static final long serialVersionUID = -519824343678414598L;
@@ -72,8 +69,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
             } catch (Exception e) {
                 // ignore
             }
-        } else if (CACHE_TYPE_META.equalsIgnoreCase(cacheType)) {
-            ResourceDefinitionHelper.invalidateCache(entryName);
         } else if (defaultType || CACHE_TYPE_PACKAGE.equalsIgnoreCase(cacheType)) {
             if (!Strings.isNullOrEmpty(entryName)) {
                 ServerCache.invalidateInLocal(entryName);
@@ -124,16 +119,6 @@ public class GetCacheStatusServlet extends BaseHttpServlet implements CartePlugi
                 Class clazz = Class.forName(UDJC_CLASS_NAME);
                 Method method = clazz.getMethod(UDJC_READ_METHOD_NAME);
                 sb.append(method.invoke(null));
-            } catch (Exception e) {
-                sb.append(DEFAULT_CACHE_STATS);
-            }
-            sb.append('\r').append('\n');
-        }
-
-        if (all || CACHE_TYPE_META.equalsIgnoreCase(cacheType)) {
-            sb.append(META_CACHE_NAME);
-            try {
-                sb.append(ResourceDefinitionHelper.getCacheStats());
             } catch (Exception e) {
                 sb.append(DEFAULT_CACHE_STATS);
             }

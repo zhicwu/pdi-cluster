@@ -57,17 +57,6 @@ public final class ResourceDefinitionHelper {
     private static final boolean KEEP_EXPORTED_FILE = "Y".equalsIgnoreCase(
             EnvUtil.getSystemProperty("KETTLE_KEEP_EXPORTED_FILE", "N"));
 
-    private static final int META_CACHE_SIZE
-            = Integer.parseInt(System.getProperty("KETTLE_META_CACHE_SIZE", "100"));
-    private static final int META_EXPIRATION_MINUTE
-            = Integer.parseInt(System.getProperty("KETTLE_META_EXPIRATION_MINUTE", "120"));
-
-    private static final Cache<String, AbstractMeta> metaCache = CacheBuilder.newBuilder()
-            .maximumSize(META_CACHE_SIZE)
-            .expireAfterAccess(META_EXPIRATION_MINUTE, TimeUnit.MINUTES)
-            .recordStats()
-            .build();
-
     private final static String VARIABLE_PREFIX = "${";
     private final static String VARIABLE_SUFFIX = "}";
 
@@ -296,44 +285,30 @@ public final class ResourceDefinitionHelper {
 
         String key = dir.getPathObjectCombination(realFileName);
         // rep.getLog().logError("=====> Loading Trans[" + key + "], contains variable=" + containsVariable(realFileName));
-        AbstractMeta transMeta = null;
-        try {
-            transMeta = metaCache.get(key, new Callable<AbstractMeta>() {
-                @Override
-                public AbstractMeta call() throws Exception {
-                    AbstractMeta transMeta = null;
+        TransMeta transMeta = null;
+        if (containsVariable(realFileName)) {
+            TransMetaCollection tmc = new TransMetaCollection();
+            transMeta = tmc;
+            transMeta.setFilename(realFileName);
 
-                    if (containsVariable(realFileName)) {
-                        TransMetaCollection tmc = new TransMetaCollection();
-                        transMeta = tmc;
-                        transMeta.setFilename(realFileName);
-
-                        loadTransformationRecursively(rep, tmc, dir);
-                    } else {
-                        int idx = realFileName.indexOf(TRANS_FILE_EXT);
-                        if (idx > 0) { // try without extension
-                            try {
-                                transMeta = rep.loadTransformation(realFileName.substring(0, idx),
-                                        dir, null, true, null);
-                            } catch (KettleException e) {
-                                // ignore exception
-                            }
-                        }
-
-                        if (transMeta == null) {
-                            transMeta = rep.loadTransformation(realFileName, dir, null, true, null);
-                        }
-                    }
-
-                    return transMeta;
+            loadTransformationRecursively(rep, tmc, dir);
+        } else {
+            int idx = realFileName.indexOf(TRANS_FILE_EXT);
+            if (idx > 0) { // try without extension
+                try {
+                    transMeta = rep.loadTransformation(realFileName.substring(0, idx),
+                            dir, null, true, null);
+                } catch (KettleException e) {
+                    // ignore exception
                 }
-            });
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause();
-            throw cause instanceof KettleException ? (KettleException) cause : new KettleException(cause);
+            }
+
+            if (transMeta == null) {
+                transMeta = rep.loadTransformation(realFileName, dir, null, true, null);
+            }
         }
 
-        return transMeta instanceof TransMeta ? (TransMeta) ((TransMeta) transMeta).realClone(false) : null;
+        return transMeta;
     }
 
     private static void loadJobRecursively(
@@ -365,43 +340,30 @@ public final class ResourceDefinitionHelper {
 
         String key = dir.getPathObjectCombination(realFileName);
         // rep.getLog().logError("=====> Loading Job[" + key + "], contains variable=" + containsVariable(realFileName));
-        AbstractMeta jobMeta = null;
-        try {
-            jobMeta = metaCache.get(key, new Callable<AbstractMeta>() {
-                @Override
-                public AbstractMeta call() throws Exception {
-                    AbstractMeta jobMeta = null;
+        JobMeta jobMeta = null;
 
-                    if (containsVariable(realFileName)) {
-                        JobMetaCollection jmc = new JobMetaCollection();
-                        jobMeta = jmc;
-                        jobMeta.setFilename(realFileName);
+        if (containsVariable(realFileName)) {
+            JobMetaCollection jmc = new JobMetaCollection();
+            jobMeta = jmc;
+            jobMeta.setFilename(realFileName);
 
-                        loadJobRecursively(rep, jmc, dir);
-                    } else {
-                        int idx = realFileName.indexOf(JOB_FILE_EXT);
-                        if (idx > 0) { // try without extension
-                            try {
-                                jobMeta = rep.loadJob(realFileName.substring(0, idx), dir, null, null);
-                            } catch (KettleException e) {
-                                // ignore exception
-                            }
-                        }
-
-                        if (jobMeta == null) {
-                            jobMeta = rep.loadJob(realFileName, dir, null, null);
-                        }
-                    }
-
-                    return jobMeta;
+            loadJobRecursively(rep, jmc, dir);
+        } else {
+            int idx = realFileName.indexOf(JOB_FILE_EXT);
+            if (idx > 0) { // try without extension
+                try {
+                    jobMeta = rep.loadJob(realFileName.substring(0, idx), dir, null, null);
+                } catch (KettleException e) {
+                    // ignore exception
                 }
-            });
-        } catch (ExecutionException e) {
-            Throwable cause = e.getCause();
-            throw cause instanceof KettleException ? (KettleException) cause : new KettleException(cause);
+            }
+
+            if (jobMeta == null) {
+                jobMeta = rep.loadJob(realFileName, dir, null, null);
+            }
         }
 
-        return jobMeta instanceof JobMeta ? (JobMeta) ((JobMeta) jobMeta).realClone(false) : null;
+        return jobMeta;
     }
 
     public static boolean isPentahoRepository(Repository repository) {
@@ -614,32 +576,6 @@ public final class ResourceDefinitionHelper {
         }
 
         return fileName;
-    }
-
-
-    public static String getCacheStats() {
-        StringBuilder sb = new StringBuilder(metaCache.stats().toString());
-
-        try {
-            Map<String, AbstractMeta> map = metaCache.asMap();
-            for (Map.Entry<String, AbstractMeta> entry : map.entrySet()) {
-                AbstractMeta meta = entry.getValue();
-                sb.append(Const.CR).append(entry.getKey())
-                        .append('=').append(meta.getClass().getName()).append('@').append(meta.hashCode());
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-
-        return sb.toString();
-    }
-
-    public static void invalidateCache(String key) {
-        if (Strings.isNullOrEmpty(key)) {
-            metaCache.invalidateAll();
-        } else {
-            metaCache.invalidate(key);
-        }
     }
 
     private ResourceDefinitionHelper() {
