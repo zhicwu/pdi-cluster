@@ -213,9 +213,10 @@ public class ExclusiveKettleJobAction {
         }
 
         if (timedout) {
-            removeJobFromCache(carteObjId);
+            // try not lost track as we may have to kill the job again in its next run...
+            // removeJobFromCache(carteObjId);
             throw new JobExecutionException(new StringBuilder()
-                    .append("Stop exclusive job [")
+                    .append("Failed to stop exclusive job [")
                     .append(jobKey)
                     .append("] as it took too long( >= ")
                     .append(KETTLE_JOB_KILLER_MAX_WAIT / 1000)
@@ -251,9 +252,11 @@ public class ExclusiveKettleJobAction {
             try {
                 String jobId = carteObj.getId();
                 org.pentaho.di.job.Job job = jobMap.getJob(carteObj);
-                if (job.isActive() && !job.isStopped()) {
-                    String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
-
+                String jobName = extractJobName(job.getParameterValue(KEY_ETL_JOB_ID));
+                // job.isActive() && !job.isStopped() won't count Halting status as it's supposed to be finished quickly
+                // the truth is sometimes a job may hang for a long time with Halting status for no reason - maybe a bug in Kettle
+                // it's rude to kill the job before it's fully completed but it's better to let it hang there for ever
+                if (job.isActive()) {
                     // kill the job instance on the consecutive 3rd time we met it
                     if (actionType == ActionType.RESPECT && currentJobName.equals(jobName)) {
                         long occurrence = increaseJobOccurrence(jobId);
@@ -285,6 +288,15 @@ public class ExclusiveKettleJobAction {
                         }
                     }
                 } else {
+                    logger.warn(new StringBuilder()
+                            .append("Found inactive job instance [")
+                            .append(jobName)
+                            .append('(')
+                            .append(jobId)
+                            .append(")] when trying to run exclusive job [")
+                            .append(jobKey)
+                            .append(']').toString());
+                    // we really cannot do anything here if the job finished/stopped but hang in the scheduled job queue
                     removeJobFromCache(jobId);
                 }
             } catch (JobExecutionException e) {
