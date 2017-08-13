@@ -428,6 +428,9 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
                 emergencyWriteJobTracker(result);
             }
+
+            // clear parameters so that we can reuse the instance later(on slave server)
+            clearParameters();
         }
     }
 
