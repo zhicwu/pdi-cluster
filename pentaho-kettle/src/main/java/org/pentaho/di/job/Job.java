@@ -23,6 +23,7 @@
 
 package org.pentaho.di.job;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import org.apache.commons.vfs2.FileName;
 import org.apache.commons.vfs2.FileObject;
@@ -91,6 +92,10 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
     public static final long MAX_JOB_DURATION_MS // by default, every job must be completed within 4 hours
             = Integer.parseInt(System.getProperty("KETTLE_MAX_JOB_DURATION_MS", "14400000"));
+
+    // this is helpful when you implemented a job or transformation as wrapper for others
+    public static final Iterable<String> JOB_NAME_PARAMS = Splitter.on(',').omitEmptyStrings().trimResults().split(
+            System.getProperty("KETTLE_JOB_NAME_PARAMS", "ETL_CALLER,ETL_SCRIPT"));
 
     private LogChannelInterface log;
 
@@ -429,8 +434,22 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
                 emergencyWriteJobTracker(result);
             }
 
-            // clear parameters so that we can reuse the instance later(on slave server)
-            clearParameters();
+            // FIXME clear parameters so that we can reuse the instance later(on slave server)
+            boolean isOnMaster = false;
+            for (String name : JOB_NAME_PARAMS) {
+                try {
+                    if (!Strings.isNullOrEmpty(namedParams.getParameterValue(name))) {
+                        isOnMaster = true;
+                        break;
+                    }
+                } catch (UnknownParamException e) {
+                    // ignore the exception
+                }
+            }
+
+            if (!isOnMaster) {
+                clearParameters();
+            }
         }
     }
 

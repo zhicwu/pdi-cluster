@@ -23,6 +23,7 @@
 package org.pentaho.di.www;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.xml.XMLHandler;
@@ -44,16 +45,14 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
+import static org.pentaho.di.job.Job.JOB_NAME_PARAMS;
+
 public class GetStatusServlet extends BaseHttpServlet implements CartePluginInterface {
     private static Class<?> PKG = GetStatusServlet.class; // for i18n purposes, needed by Translator2!!
 
     private static final long serialVersionUID = 3634806745372015720L;
 
     public static final String CONTEXT_PATH = "/kettle/status";
-
-    // this is helpful when you implemented a job or transformation as wrapper for others
-    public static final Iterable<String> JOB_NAME_PARAMS = Splitter.on(',').omitEmptyStrings().trimResults().split(
-            System.getProperty("KETTLE_JOB_NAME_PARAMS", "ETL_CALLER,ETL_SCRIPT"));
 
     public GetStatusServlet() {
     }
@@ -343,7 +342,7 @@ public class GetStatusServlet extends BaseHttpServlet implements CartePluginInte
                     StringBuilder sb = new StringBuilder();
                     for (String pName : JOB_NAME_PARAMS) {
                         String realName = job.getParameterValue(pName);
-                        if (realName != null) {
+                        if (!Strings.isNullOrEmpty(realName)) {
                             sb.append(',').append(' ').append(realName);
                         }
                     }

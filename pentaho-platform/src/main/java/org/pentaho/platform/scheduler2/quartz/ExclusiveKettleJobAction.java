@@ -288,14 +288,17 @@ public class ExclusiveKettleJobAction {
                         }
                     }
                 } else {
-                    logger.warn(new StringBuilder()
-                            .append("Found inactive job instance [")
-                            .append(jobName)
-                            .append('(')
-                            .append(jobId)
-                            .append(")] when trying to run exclusive job [")
-                            .append(jobKey)
-                            .append(']').toString());
+                    if (currentJobName.equals(jobName)) {
+                        logger.warn(new StringBuilder()
+                                .append("Found inactive job instance [")
+                                .append(jobName)
+                                .append('(')
+                                .append(jobId)
+                                .append(")] when trying to run exclusive job [")
+                                .append(jobKey)
+                                .append(']').toString());
+                    }
+
                     // we really cannot do anything here if the job finished/stopped but hang in the scheduled job queue
                     removeJobFromCache(jobId);
                 }

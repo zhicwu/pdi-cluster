@@ -892,9 +892,6 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
             setArguments(arguments);
         }
 
-        // clear parameters first in case this is a reused instance
-        clearParameters();
-
         activateParameters();
         transMeta.activateParameters();
 
