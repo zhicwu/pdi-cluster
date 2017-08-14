@@ -1815,6 +1815,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
                     .append("Starting remote job[name='").append(jobName)
                     .append("', id='").append(carteObjectId).append("'...").toString());
 
+            // FIXME: what if parent job wants to pass dynamic parameters to a reused job instance on remote server?
             String reply =
                     slaveServer.execService(StartJobServlet.CONTEXT_PATH + "/?name=" + URLEncoder.encode(jobName,
                             "UTF-8") + "&xml=Y&id=" + carteObjectId,
