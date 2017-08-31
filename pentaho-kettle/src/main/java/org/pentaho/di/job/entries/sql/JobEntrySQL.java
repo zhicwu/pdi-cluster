@@ -369,9 +369,14 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
         if (this.getSQLFromFile()) {
             copyVariablesFrom(space); // To make sure variables are available.
 
-            this.setSQLFromFile(false);
-            this.setSQL(ResourceDefinitionHelper.getTextFileContent(
-                    repository, environmentSubstitute(this.getSQLFilename()), this.getLogChannel()));
+            String theSQL = ResourceDefinitionHelper.getTextFileContent(
+                    repository, environmentSubstitute(this.getSQLFilename()), this.getLogChannel());
+
+            // only do this for non-dynamic SQL scripts
+            if (!Strings.isNullOrEmpty(theSQL)) {
+                this.setSQLFromFile(false);
+                this.setSQL(theSQL);
+            }
         }
 
         return super.exportResources(space, definitions, namingInterface, repository, metaStore);
