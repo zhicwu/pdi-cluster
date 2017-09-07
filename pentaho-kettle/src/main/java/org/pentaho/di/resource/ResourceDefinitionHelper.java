@@ -26,6 +26,7 @@ import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleFileException;
 import org.pentaho.di.core.logging.LogChannelInterface;
+import org.pentaho.di.core.util.CurrentDirectoryResolver;
 import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
@@ -38,6 +39,8 @@ import org.pentaho.di.trans.TransMeta;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +76,8 @@ public final class ResourceDefinitionHelper {
     private final static String METHOD_GET_NAME = "getName";
     private final static String METHOD_GET_PUR = "getPur";
 
-    private final static String FS_PROTOCOL = "file://";
+    private final static String FS_SCHEMA = "file";
+    private final static String FS_PROTOCOL = FS_SCHEMA + "://";
 
     private final static String WARN_FAILED_TO_LOAD_FILE = "Failed to get file content from Pentaho Repository: ";
 
@@ -467,6 +471,26 @@ public final class ResourceDefinitionHelper {
         }
 
         return normalizeFileName(fileName);
+    }
+
+    public static String normalizeFileName(String fileName, CurrentDirectoryResolver resolver) {
+        String normalizedFileName = normalizeFileName(fileName);
+
+        URI uri = null;
+        try {
+            uri = new URI(normalizedFileName);
+        } catch (URISyntaxException e) {
+            // ignore what happened
+        }
+
+        if (uri == null || Strings.isNullOrEmpty(uri.getScheme()) || FS_SCHEMA.equalsIgnoreCase(uri.getScheme())) {
+            normalizedFileName = uri.getPath(); // this also removes parameters in URI, which is good
+            if (resolver != null) {
+                normalizedFileName = resolver.normalizeSlashes(normalizedFileName);
+            }
+        }
+
+        return normalizedFileName;
     }
 
     public static String normalizeFileName(String fileName) {

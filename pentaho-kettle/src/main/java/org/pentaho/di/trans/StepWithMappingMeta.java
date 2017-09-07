@@ -77,7 +77,7 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                     //
                     if (rep != null) {
                         // need to try to load from the repository
-                        realFilename = ResourceDefinitionHelper.normalizeFileName(r.normalizeSlashes(realFilename));
+                        realFilename = ResourceDefinitionHelper.normalizeFileName(realFilename, r);
                         String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
                         String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
 
