@@ -1240,10 +1240,9 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                         }
                     }
 
-                    if (jobMeta == null) {
-                        // jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
-                        logError("Job meta not found. Could be an external job only available at runtime: "
-                                + realFilename);
+                    if (jobMeta == null && KettleVFS.fileExists(realFilename)) {
+                        logBasic("Loading job from [" + realFilename + "]");
+                        jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
                     }
                     break;
                 case REPOSITORY_BY_NAME:

@@ -1264,11 +1264,9 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (transMeta == null) {
-                        //logBasic("Loading transformation from XML file [" + realFilename + "]");
-                        //transMeta = new TransMeta(realFilename, metaStore, null, true, this, null);
-                        logError("Job meta not found. Could be an external transformation only available at runtime: "
-                                + realFilename);
+                    if (transMeta == null && KettleVFS.fileExists(realFilename)) {
+                        logBasic("Loading transformation from [" + realFilename + "]");
+                        transMeta = new TransMeta(realFilename, metaStore, rep, true, tmpSpace, null);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
