@@ -474,7 +474,11 @@ public final class ResourceDefinitionHelper {
     }
 
     public static String normalizeFileName(String fileName, CurrentDirectoryResolver resolver) {
-        String normalizedFileName = normalizeFileName(fileName);
+        if (Strings.isNullOrEmpty(fileName)) {
+            return fileName;
+        }
+
+        String normalizedFileName = fileName.trim();
 
         URI uri = null;
         try {
@@ -488,6 +492,8 @@ public final class ResourceDefinitionHelper {
             if (resolver != null) {
                 normalizedFileName = resolver.normalizeSlashes(normalizedFileName);
             }
+
+            normalizedFileName = normalizeFileName(normalizedFileName);
         }
 
         return normalizedFileName;
