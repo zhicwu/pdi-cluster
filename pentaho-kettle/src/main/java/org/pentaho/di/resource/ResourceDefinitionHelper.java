@@ -488,7 +488,8 @@ public final class ResourceDefinitionHelper {
         }
 
         if (uri == null || Strings.isNullOrEmpty(uri.getScheme()) || FS_SCHEMA.equalsIgnoreCase(uri.getScheme())) {
-            normalizedFileName = uri.getPath(); // this also removes parameters in URI, which is good
+            // this also removes parameters in URI, which is good
+            normalizedFileName = uri == null ? normalizedFileName : uri.getPath();
             if (resolver != null) {
                 normalizedFileName = resolver.normalizeSlashes(normalizedFileName);
             }

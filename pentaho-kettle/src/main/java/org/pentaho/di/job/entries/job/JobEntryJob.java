@@ -1239,8 +1239,11 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
+
                     if (jobMeta == null) {
-                        jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
+                        // jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
+                        logError("Job meta not found. Could be an external job only available at runtime: "
+                                + realFilename);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
@@ -1352,6 +1355,10 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
         //
         copyVariablesFrom(space); // To make sure variables are available.
         JobMeta jobMeta = getJobMeta(repository, metaStore, space);
+
+        if (jobMeta == null) {
+            return null;
+        }
 
         boolean isMultiple = false;
         if (jobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {

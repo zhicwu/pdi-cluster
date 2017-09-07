@@ -1265,8 +1265,10 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         }
                     }
                     if (transMeta == null) {
-                        logBasic("Loading transformation from XML file [" + realFilename + "]");
-                        transMeta = new TransMeta(realFilename, metaStore, null, true, this, null);
+                        //logBasic("Loading transformation from XML file [" + realFilename + "]");
+                        //transMeta = new TransMeta(realFilename, metaStore, null, true, this, null);
+                        logError("Job meta not found. Could be an external transformation only available at runtime: "
+                                + realFilename);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
@@ -1445,6 +1447,10 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         //
         copyVariablesFrom(space);
         TransMeta transMeta = getTransMeta(repository, space);
+
+        if (transMeta == null) {
+            return null;
+        }
 
         boolean isMultiple = false;
         if (transMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {
