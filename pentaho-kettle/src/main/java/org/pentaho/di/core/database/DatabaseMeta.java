@@ -25,6 +25,7 @@ package org.pentaho.di.core.database;
 
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.RowMetaAndData;
+import org.pentaho.di.core.database.util.DataSourceLocator;
 import org.pentaho.di.core.encryption.Encr;
 import org.pentaho.di.core.exception.KettleDatabaseException;
 import org.pentaho.di.core.exception.KettlePluginException;
@@ -2532,6 +2533,17 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
                 return ci;
             }
         }
+
+        // now try scan JNDI datasources
+        if (DataSourceLocator.hasDataSource(dbname)) {
+            DatabaseMeta dm = new DatabaseMeta();
+            // dm.setName(dbname);
+            dm.setDBName(dbname);
+            dm.setAccessType(DatabaseMeta.TYPE_ACCESS_JNDI);
+
+            return dm;
+        }
+
         return null;
     }
 

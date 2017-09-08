@@ -100,6 +100,9 @@ public final class DataSourceLocator {
         activated = false;
     }
 
+    public static boolean hasDataSource(String dsName) {
+        return dataSources.containsKey(dsName);
+    }
 
     public static int updateDataSourceMappings(Map<String, IDatabaseConnection> mapping) {
         if (mapping == null || mapping.size() == 0) {
