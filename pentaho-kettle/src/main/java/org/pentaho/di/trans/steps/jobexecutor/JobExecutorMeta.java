@@ -644,10 +644,9 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                             // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
-                    if (mappingJobMeta == null) {
+                    if (mappingJobMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
+                        LogChannel.GENERAL.logBasic("Loading job from [" + realFilename + "]");
                         mappingJobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
-                        LogChannel.GENERAL.logDetailed("Loading job from repository", "Job was loaded from XML file ["
-                                + realFilename + "]");
                     }
                 } catch (Exception e) {
                     throw new KettleException(BaseMessages.getString(PKG, "JobExecutorMeta.Exception.UnableToLoadJob"), e);
@@ -655,39 +654,49 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 break;
 
             case REPOSITORY_BY_NAME:
-                String realJobname = tmpSpace.environmentSubstitute(executorMeta.getJobName());
+                String realJobName = tmpSpace.environmentSubstitute(executorMeta.getJobName());
                 String realDirectory = tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath());
 
                 if (rep != null) {
-                    if (!Utils.isEmpty(realJobname) && !Utils.isEmpty(realDirectory)) {
-                        realDirectory = r.normalizeSlashes(realDirectory);
+                    if (!Utils.isEmpty(realJobName) && !Utils.isEmpty(realDirectory)) {
+                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
+                        String filename = realDirectory + '/' + realJobName;
+
                         RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
-                        if (repdir != null) {
+                        if (repdir == null) {
+                            if (ResourceDefinitionHelper.isURI(filename)
+                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                                LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
+                                mappingJobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
+                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
+                                throw new KettleException("Unable to find job in repository ["
+                                        + Const.NVL(filename, "") + "]");
+                            }
+                        } else {
                             try {
+                                LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
                                 // reads the last revision in the repository...
                                 //
-                                mappingJobMeta = rep.loadJob(realJobname, repdir, null, null); // TODO: FIXME: should we also pass an
+                                mappingJobMeta = rep.loadJob(realJobName, repdir, null, null); // TODO: FIXME: should we also pass an
                                 // external MetaStore into the
                                 // repository?
-                                LogChannel.GENERAL.logDetailed("Loading job from repository", "Executor job ["
-                                        + realJobname + "] was loaded from the repository");
                             } catch (Exception e) {
-                                throw new KettleException("Unable to load job [" + realJobname + "]", e);
+                                throw new KettleException("Unable to load job [" + realJobName + "]", e);
                             }
                         }
                     }
                 } else {
                     // rep is null, let's try loading by filename
                     try {
-                        mappingJobMeta = new JobMeta(tmpSpace, realDirectory + "/" + realJobname, rep, metaStore, null);
+                        mappingJobMeta = new JobMeta(tmpSpace, realDirectory + "/" + realJobName, rep, metaStore, null);
                     } catch (KettleException ke) {
                         try {
                             // add .kjb extension and try again
                             mappingJobMeta = new JobMeta(tmpSpace,
-                                    realDirectory + "/" + realJobname + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
+                                    realDirectory + "/" + realJobName + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
                         } catch (KettleException ke2) {
                             throw new KettleException(BaseMessages.getString(
-                                    PKG, "JobExecutorMeta.Exception.UnableToLoadJob", realJobname)
+                                    PKG, "JobExecutorMeta.Exception.UnableToLoadJob", realJobName)
                                     + realDirectory);
                         }
                     }

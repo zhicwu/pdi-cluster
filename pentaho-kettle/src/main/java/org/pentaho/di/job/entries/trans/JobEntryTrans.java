@@ -1264,16 +1264,16 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (transMeta == null && KettleVFS.fileExists(realFilename)) {
+                    if (transMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
                         logBasic("Loading transformation from [" + realFilename + "]");
                         transMeta = new TransMeta(realFilename, metaStore, rep, true, tmpSpace, null);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
-                    String transname = tmpSpace.environmentSubstitute(getTransname());
+                    String realTransName = tmpSpace.environmentSubstitute(getTransname());
                     String realDirectory = tmpSpace.environmentSubstitute(getDirectory());
 
-                    logBasic(BaseMessages.getString(PKG, "JobTrans.Log.LoadingTransRepDirec", transname, realDirectory));
+                    logBasic(BaseMessages.getString(PKG, "JobTrans.Log.LoadingTransRepDirec", realTransName, realDirectory));
 
                     if (rep != null) {
                         //
@@ -1282,18 +1282,31 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         //
                         // It reads last the last revision from the repository.
                         //
-                        realDirectory = r.normalizeSlashes(realDirectory);
+                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
+                        String filename = realDirectory + '/' + realTransName;
 
                         RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
-                        transMeta = rep.loadTransformation(transname, repositoryDirectory, null, true, null);
+                        if (repositoryDirectory == null) {
+                            if (ResourceDefinitionHelper.isURI(filename)
+                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                                logBasic("Loading transformation from [" + filename + "]");
+                                transMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
+                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
+                                throw new KettleException("Unable to find transformation in repository ["
+                                        + Const.NVL(filename, "") + "]");
+                            }
+                        } else {
+                            logBasic("Loading transformation from [" + filename + "]");
+                            transMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
+                        }
                     } else {
                         // rep is null, let's try loading by filename
                         try {
-                            transMeta = new TransMeta(realDirectory + "/" + transname, metaStore, null, true, this, null);
+                            transMeta = new TransMeta(realDirectory + "/" + realTransName, metaStore, null, true, this, null);
                         } catch (KettleException ke) {
                             try {
                                 // add .ktr extension and try again
-                                transMeta = new TransMeta(realDirectory + "/" + transname + "." + Const.STRING_TRANS_DEFAULT_EXT,
+                                transMeta = new TransMeta(realDirectory + "/" + realTransName + "." + Const.STRING_TRANS_DEFAULT_EXT,
                                         metaStore, null, true, this, null);
                             } catch (KettleException ke2) {
                                 throw new KettleException(BaseMessages.getString(PKG, "JobTrans.Exception.NoRepDefined"), ke2);

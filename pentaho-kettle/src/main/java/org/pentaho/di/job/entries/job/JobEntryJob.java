@@ -1240,7 +1240,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                         }
                     }
 
-                    if (jobMeta == null && KettleVFS.fileExists(realFilename)) {
+                    if (jobMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
                         logBasic("Loading job from [" + realFilename + "]");
                         jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
                     }
@@ -1250,14 +1250,24 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     String realJobName = tmpSpace.environmentSubstitute(getJobName());
 
                     if (rep != null) {
-                        realDirectory = r.normalizeSlashes(realDirectory);
+                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
+                        String filename = realDirectory + '/' + realJobName;
+
                         RepositoryDirectoryInterface repositoryDirectory =
                                 rep.loadRepositoryDirectoryTree().findDirectory(realDirectory);
                         if (repositoryDirectory == null) {
-                            throw new KettleException("Unable to find repository directory ["
-                                    + Const.NVL(realDirectory, "") + "]");
+                            if (ResourceDefinitionHelper.isURI(filename)
+                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                                logBasic("Loading job from [" + filename + "]");
+                                jobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
+                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
+                                throw new KettleException("Unable to find job in repository ["
+                                        + Const.NVL(filename, "") + "]");
+                            }
+                        } else {
+                            logBasic("Loading job from [" + filename + "]");
+                            jobMeta = rep.loadJob(realJobName, repositoryDirectory, null, null); // reads
                         }
-                        jobMeta = rep.loadJob(realJobName, repositoryDirectory, null, null); // reads
                     } else {
                         // rep is null, let's try loading by filename
                         try {

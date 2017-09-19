@@ -210,6 +210,31 @@ public final class ResourceDefinitionHelper {
         }
     }
 
+    public static boolean fileExists(String vfsFilename) {
+        boolean result = false;
+
+        try {
+            result = KettleVFS.fileExists(vfsFilename);
+        } catch (Exception e) {
+            // ignore exception here
+        }
+
+        return result;
+    }
+
+    public static boolean isURI(String name) {
+        boolean result = false;
+        URI uri = null;
+        try {
+            uri = new URI(name);
+            result = uri != null && !Strings.isNullOrEmpty(uri.getScheme()) && !FS_SCHEMA.equalsIgnoreCase(uri.getScheme());
+        } catch (URISyntaxException e) {
+            // ignore what happened
+        }
+
+        return result;
+    }
+
     public static boolean containsVariable(String name) {
         boolean hasVar = false;
 

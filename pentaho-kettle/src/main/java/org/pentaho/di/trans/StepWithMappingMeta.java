@@ -89,10 +89,9 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (mappingTransMeta == null) {
+                    if (mappingTransMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
+                        LogChannel.GENERAL.logBasic("Loading transformation from [" + realFilename + "]");
                         mappingTransMeta = new TransMeta(realFilename, metaStore, rep, true, tmpSpace, null);
-                        LogChannel.GENERAL.logDetailed("Loading transformation from repository",
-                                "Transformation was loaded from XML file [" + realFilename + "]");
                     }
                 } catch (Exception e) {
                     throw new KettleException(BaseMessages.getString(PKG, "StepWithMappingMeta.Exception.UnableToLoadTrans"),
@@ -101,40 +100,43 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                 break;
 
             case REPOSITORY_BY_NAME:
-                String realTransname = tmpSpace.environmentSubstitute(executorMeta.getTransName());
+                String realTransName = tmpSpace.environmentSubstitute(executorMeta.getTransName());
                 String realDirectory = tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath());
 
                 if (rep != null) {
-                    if (!Utils.isEmpty(realTransname) && !Utils.isEmpty(realDirectory)) {
-                        realDirectory = r.normalizeSlashes(realDirectory);
-                        RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
-                        if (repdir != null) {
-                            try {
-                                // reads the last revision in the repository...
-                                mappingTransMeta = rep.loadTransformation(realTransname, repdir, null, true, null);
-                                // TODO: FIXME: pass in metaStore to repository?
+                    if (!Utils.isEmpty(realTransName) && !Utils.isEmpty(realDirectory)) {
+                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
+                        String filename = realDirectory + '/' + realTransName;
 
-                                LogChannel.GENERAL.logDetailed("Loading transformation from repository", "Executor transformation ["
-                                        + realTransname + "] was loaded from the repository");
-                            } catch (Exception e) {
-                                throw new KettleException("Unable to load transformation [" + realTransname + "]", e);
+                        RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
+                        if (repositoryDirectory == null) {
+                            if (ResourceDefinitionHelper.isURI(filename)
+                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                                LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
+                                mappingTransMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
+                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
+                                throw new KettleException("Unable to find transformation in repository ["
+                                        + Const.NVL(filename, "") + "]");
                             }
+                        } else {
+                            LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
+                            mappingTransMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
                         }
                     }
                 } else {
                     // rep is null, let's try loading by filename
                     try {
                         mappingTransMeta =
-                                new TransMeta(realDirectory + "/" + realTransname, metaStore, rep, true, tmpSpace, null);
+                                new TransMeta(realDirectory + "/" + realTransName, metaStore, rep, true, tmpSpace, null);
                     } catch (KettleException ke) {
                         try {
                             // add .ktr extension and try again
                             mappingTransMeta =
-                                    new TransMeta(realDirectory + "/" + realTransname + "." + Const.STRING_TRANS_DEFAULT_EXT, metaStore,
+                                    new TransMeta(realDirectory + "/" + realTransName + "." + Const.STRING_TRANS_DEFAULT_EXT, metaStore,
                                             rep, true, tmpSpace, null);
                         } catch (KettleException ke2) {
                             throw new KettleException(BaseMessages.getString(PKG, "StepWithMappingMeta.Exception.UnableToLoadTrans",
-                                    realTransname) + realDirectory);
+                                    realTransName) + realDirectory);
                         }
                     }
                 }
