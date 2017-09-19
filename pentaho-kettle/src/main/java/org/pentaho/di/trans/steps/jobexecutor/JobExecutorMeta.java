@@ -654,18 +654,16 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 break;
 
             case REPOSITORY_BY_NAME:
+                String realDirectory = ResourceDefinitionHelper.normalizeFileName(
+                        tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath()), r);
                 String realJobName = tmpSpace.environmentSubstitute(executorMeta.getJobName());
-                String realDirectory = tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath());
+                String filename = realDirectory + '/' + realJobName;
 
                 if (rep != null) {
                     if (!Utils.isEmpty(realJobName) && !Utils.isEmpty(realDirectory)) {
-                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
-                        String filename = realDirectory + '/' + realJobName;
-
                         RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
                         if (repdir == null) {
-                            if (ResourceDefinitionHelper.isURI(filename)
-                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                            if (ResourceDefinitionHelper.fileExists(filename)) {
                                 LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
                                 mappingJobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
                             } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
@@ -688,12 +686,14 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 } else {
                     // rep is null, let's try loading by filename
                     try {
-                        mappingJobMeta = new JobMeta(tmpSpace, realDirectory + "/" + realJobName, rep, metaStore, null);
+                        LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
+                        mappingJobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
                     } catch (KettleException ke) {
                         try {
                             // add .kjb extension and try again
+                            LogChannel.GENERAL.logDetailed("Try again by loading job [" + filename + "] with .kjb extension");
                             mappingJobMeta = new JobMeta(tmpSpace,
-                                    realDirectory + "/" + realJobName + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
+                                    filename + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
                         } catch (KettleException ke2) {
                             throw new KettleException(BaseMessages.getString(
                                     PKG, "JobExecutorMeta.Exception.UnableToLoadJob", realJobName)

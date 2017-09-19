@@ -1223,11 +1223,9 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     specificationMethod, space, rep, parentJob, getFilename());
             switch (specificationMethod) {
                 case FILENAME:
-                    String realFilename = tmpSpace.environmentSubstitute(getFilename());
+                    String realFilename = ResourceDefinitionHelper.normalizeFileName(
+                            tmpSpace.environmentSubstitute(getFilename()), r);
                     if (rep != null) {
-                        // need to try to load from the repository
-                        realFilename = ResourceDefinitionHelper.normalizeFileName(realFilename, r);
-
                         String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
                         String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
 
@@ -1246,18 +1244,16 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     }
                     break;
                 case REPOSITORY_BY_NAME:
-                    String realDirectory = tmpSpace.environmentSubstitute(getDirectory());
+                    String realDirectory = ResourceDefinitionHelper.normalizeFileName(
+                            tmpSpace.environmentSubstitute(getDirectory()), r);
                     String realJobName = tmpSpace.environmentSubstitute(getJobName());
+                    String filename = realDirectory + '/' + realJobName;
 
                     if (rep != null) {
-                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
-                        String filename = realDirectory + '/' + realJobName;
-
                         RepositoryDirectoryInterface repositoryDirectory =
                                 rep.loadRepositoryDirectoryTree().findDirectory(realDirectory);
                         if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.isURI(filename)
-                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                            if (ResourceDefinitionHelper.fileExists(filename)) {
                                 logBasic("Loading job from [" + filename + "]");
                                 jobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
                             } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
@@ -1271,12 +1267,14 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     } else {
                         // rep is null, let's try loading by filename
                         try {
-                            jobMeta = new JobMeta(tmpSpace, realDirectory + "/" + realJobName, rep, metaStore, null);
+                            logBasic("Loading job from [" + filename + "]");
+                            jobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
                         } catch (KettleException ke) {
                             try {
                                 // add .kjb extension and try again
+                                logBasic("Try again by loading job [" + filename + "] with .kjb extension");
                                 jobMeta = new JobMeta(tmpSpace,
-                                        realDirectory + "/" + realJobName + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
+                                        filename + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
                             } catch (KettleException ke2) {
                                 ke2.printStackTrace();
                                 throw new KettleException(

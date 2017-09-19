@@ -100,18 +100,16 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                 break;
 
             case REPOSITORY_BY_NAME:
+                String realDirectory = ResourceDefinitionHelper.normalizeFileName(
+                        tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath()), r);
                 String realTransName = tmpSpace.environmentSubstitute(executorMeta.getTransName());
-                String realDirectory = tmpSpace.environmentSubstitute(executorMeta.getDirectoryPath());
+                String filename = realDirectory + '/' + realTransName;
 
                 if (rep != null) {
                     if (!Utils.isEmpty(realTransName) && !Utils.isEmpty(realDirectory)) {
-                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
-                        String filename = realDirectory + '/' + realTransName;
-
                         RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
                         if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.isURI(filename)
-                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                            if (ResourceDefinitionHelper.fileExists(filename)) {
                                 LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
                                 mappingTransMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
                             } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
@@ -126,13 +124,15 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                 } else {
                     // rep is null, let's try loading by filename
                     try {
+                        LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
                         mappingTransMeta =
-                                new TransMeta(realDirectory + "/" + realTransName, metaStore, rep, true, tmpSpace, null);
+                                new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
                     } catch (KettleException ke) {
                         try {
                             // add .ktr extension and try again
+                            LogChannel.GENERAL.logDetailed("Try again by loading transformation [" + filename + "] with .ktr extension");
                             mappingTransMeta =
-                                    new TransMeta(realDirectory + "/" + realTransName + "." + Const.STRING_TRANS_DEFAULT_EXT, metaStore,
+                                    new TransMeta(filename + "." + Const.STRING_TRANS_DEFAULT_EXT, metaStore,
                                             rep, true, tmpSpace, null);
                         } catch (KettleException ke2) {
                             throw new KettleException(BaseMessages.getString(PKG, "StepWithMappingMeta.Exception.UnableToLoadTrans",

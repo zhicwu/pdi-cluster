@@ -1270,8 +1270,10 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                     }
                     break;
                 case REPOSITORY_BY_NAME:
+                    String realDirectory = ResourceDefinitionHelper.normalizeFileName(
+                            tmpSpace.environmentSubstitute(getDirectory()), r);
                     String realTransName = tmpSpace.environmentSubstitute(getTransname());
-                    String realDirectory = tmpSpace.environmentSubstitute(getDirectory());
+                    String filename = realDirectory + '/' + realTransName;
 
                     logBasic(BaseMessages.getString(PKG, "JobTrans.Log.LoadingTransRepDirec", realTransName, realDirectory));
 
@@ -1282,13 +1284,9 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         //
                         // It reads last the last revision from the repository.
                         //
-                        realDirectory = ResourceDefinitionHelper.normalizeFileName(realDirectory, r);
-                        String filename = realDirectory + '/' + realTransName;
-
                         RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
                         if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.isURI(filename)
-                                    && ResourceDefinitionHelper.fileExists(filename)) {
+                            if (ResourceDefinitionHelper.fileExists(filename)) {
                                 logBasic("Loading transformation from [" + filename + "]");
                                 transMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
                             } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
@@ -1302,11 +1300,13 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                     } else {
                         // rep is null, let's try loading by filename
                         try {
-                            transMeta = new TransMeta(realDirectory + "/" + realTransName, metaStore, null, true, this, null);
+                            logBasic("Loading transformation from [" + filename + "]");
+                            transMeta = new TransMeta(filename, metaStore, null, true, this, null);
                         } catch (KettleException ke) {
                             try {
                                 // add .ktr extension and try again
-                                transMeta = new TransMeta(realDirectory + "/" + realTransName + "." + Const.STRING_TRANS_DEFAULT_EXT,
+                                logBasic("Try again by loading transformation [" + filename + "] with .ktr extension");
+                                transMeta = new TransMeta(filename + "." + Const.STRING_TRANS_DEFAULT_EXT,
                                         metaStore, null, true, this, null);
                             } catch (KettleException ke2) {
                                 throw new KettleException(BaseMessages.getString(PKG, "JobTrans.Exception.NoRepDefined"), ke2);
