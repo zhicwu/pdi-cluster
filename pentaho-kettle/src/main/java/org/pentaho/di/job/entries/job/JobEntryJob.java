@@ -1252,19 +1252,13 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     if (rep != null) {
                         RepositoryDirectoryInterface repositoryDirectory =
                                 rep.loadRepositoryDirectoryTree().findDirectory(realDirectory);
-                        if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.fileExists(filename)) {
-                                logBasic("Loading job from [" + filename + "]");
-                                jobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
-                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
-                                throw new KettleException("Unable to find job in repository ["
-                                        + Const.NVL(filename, "") + "]");
-                            }
-                        } else {
+                        if (repositoryDirectory != null) {
                             logBasic("Loading job from [" + filename + "]");
                             jobMeta = rep.loadJob(realJobName, repositoryDirectory, null, null); // reads
                         }
-                    } else {
+                    }
+
+                    if (jobMeta == null) {
                         // rep is null, let's try loading by filename
                         try {
                             logBasic("Loading job from [" + filename + "]");

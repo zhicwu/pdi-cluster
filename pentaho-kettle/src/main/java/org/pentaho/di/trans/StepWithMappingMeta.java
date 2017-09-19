@@ -27,7 +27,6 @@ import org.pentaho.di.core.ObjectLocationSpecificationMethod;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.util.CurrentDirectoryResolver;
-import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.i18n.BaseMessages;
 import org.pentaho.di.repository.ObjectId;
@@ -106,22 +105,14 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                 String filename = realDirectory + '/' + realTransName;
 
                 if (rep != null) {
-                    if (!Utils.isEmpty(realTransName) && !Utils.isEmpty(realDirectory)) {
-                        RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
-                        if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.fileExists(filename)) {
-                                LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
-                                mappingTransMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
-                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
-                                throw new KettleException("Unable to find transformation in repository ["
-                                        + Const.NVL(filename, "") + "]");
-                            }
-                        } else {
-                            LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
-                            mappingTransMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
-                        }
+                    RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
+                    if (repositoryDirectory != null) {
+                        LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");
+                        mappingTransMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
                     }
-                } else {
+                }
+
+                if (mappingTransMeta == null) {
                     // rep is null, let's try loading by filename
                     try {
                         LogChannel.GENERAL.logDetailed("Loading transformation from [" + filename + "]");

@@ -660,30 +660,22 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 String filename = realDirectory + '/' + realJobName;
 
                 if (rep != null) {
-                    if (!Utils.isEmpty(realJobName) && !Utils.isEmpty(realDirectory)) {
-                        RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
-                        if (repdir == null) {
-                            if (ResourceDefinitionHelper.fileExists(filename)) {
-                                LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
-                                mappingJobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
-                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
-                                throw new KettleException("Unable to find job in repository ["
-                                        + Const.NVL(filename, "") + "]");
-                            }
-                        } else {
-                            try {
-                                LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
-                                // reads the last revision in the repository...
-                                //
-                                mappingJobMeta = rep.loadJob(realJobName, repdir, null, null); // TODO: FIXME: should we also pass an
-                                // external MetaStore into the
-                                // repository?
-                            } catch (Exception e) {
-                                throw new KettleException("Unable to load job [" + realJobName + "]", e);
-                            }
+                    RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
+                    if (repdir != null) {
+                        try {
+                            LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");
+                            // reads the last revision in the repository...
+                            //
+                            mappingJobMeta = rep.loadJob(realJobName, repdir, null, null); // TODO: FIXME: should we also pass an
+                            // external MetaStore into the
+                            // repository?
+                        } catch (Exception e) {
+                            throw new KettleException("Unable to load job [" + realJobName + "]", e);
                         }
                     }
-                } else {
+                }
+
+                if (mappingJobMeta == null) {
                     // rep is null, let's try loading by filename
                     try {
                         LogChannel.GENERAL.logDetailed("Loading job from [" + filename + "]");

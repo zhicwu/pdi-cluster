@@ -1285,19 +1285,13 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         // It reads last the last revision from the repository.
                         //
                         RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
-                        if (repositoryDirectory == null) {
-                            if (ResourceDefinitionHelper.fileExists(filename)) {
-                                logBasic("Loading transformation from [" + filename + "]");
-                                transMeta = new TransMeta(filename, metaStore, rep, true, tmpSpace, null);
-                            } else if (!ResourceDefinitionHelper.containsVariable(filename)) {
-                                throw new KettleException("Unable to find transformation in repository ["
-                                        + Const.NVL(filename, "") + "]");
-                            }
-                        } else {
+                        if (repositoryDirectory != null) {
                             logBasic("Loading transformation from [" + filename + "]");
                             transMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
                         }
-                    } else {
+                    }
+
+                    if (transMeta == null) {
                         // rep is null, let's try loading by filename
                         try {
                             logBasic("Loading transformation from [" + filename + "]");
