@@ -1217,62 +1217,65 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
 
     public JobMeta getJobMeta(Repository rep, IMetaStore metaStore, VariableSpace space) throws KettleException {
         JobMeta jobMeta = null;
+        String realFileName = null;
         try {
             CurrentDirectoryResolver r = new CurrentDirectoryResolver();
             VariableSpace tmpSpace = r.resolveCurrentDirectory(
                     specificationMethod, space, rep, parentJob, getFilename());
             switch (specificationMethod) {
                 case FILENAME:
-                    String realFilename = ResourceDefinitionHelper.normalizeFileName(
+                    realFileName = ResourceDefinitionHelper.normalizeFileName(
                             tmpSpace.environmentSubstitute(getFilename()), r);
+
                     if (rep != null) {
-                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
-                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
+                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFileName);
+                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFileName, false);
 
                         try {
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            // jobMeta = rep.loadJob(tmpFilename, dir, null, null);
-                            jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
+                            if (dir != null) {
+                                logBasic("Loading job [" + realFileName + "] from repository...");
+                                jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
+                            }
                         } catch (KettleException ke) {
+                            logBasic("Unable to load job [" + realFileName + "] from repository", ke);
                             // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
 
-                    if (jobMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
-                        logBasic("Loading job from [" + realFilename + "]");
-                        jobMeta = new JobMeta(tmpSpace, realFilename, rep, metaStore, null);
+                    if (jobMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
+                        logBasic("Loading job from [" + realFileName + "]...");
+                        jobMeta = new JobMeta(tmpSpace, realFileName, rep, metaStore, null);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
                     String realDirectory = ResourceDefinitionHelper.normalizeFileName(
                             tmpSpace.environmentSubstitute(getDirectory()), r);
                     String realJobName = tmpSpace.environmentSubstitute(getJobName());
-                    String filename = realDirectory + '/' + realJobName;
+                    realFileName = realDirectory + '/' + realJobName;
 
                     if (rep != null) {
                         RepositoryDirectoryInterface repositoryDirectory =
                                 rep.loadRepositoryDirectoryTree().findDirectory(realDirectory);
                         if (repositoryDirectory != null) {
-                            logBasic("Loading job from [" + filename + "]");
+                            logBasic("Loading job [" + realFileName + "] from repository...");
                             jobMeta = rep.loadJob(realJobName, repositoryDirectory, null, null); // reads
                         }
                     }
 
-                    if (jobMeta == null) {
+                    if (jobMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
                         // rep is null, let's try loading by filename
                         try {
-                            logBasic("Loading job from [" + filename + "]");
-                            jobMeta = new JobMeta(tmpSpace, filename, rep, metaStore, null);
+                            logBasic("Loading job [" + realFileName + "]...");
+                            jobMeta = new JobMeta(tmpSpace, realFileName, rep, metaStore, null);
                         } catch (KettleException ke) {
+                            String ext = "." + Const.STRING_JOB_DEFAULT_EXT;
                             try {
                                 // add .kjb extension and try again
-                                logBasic("Try again by loading job [" + filename + "] with .kjb extension");
-                                jobMeta = new JobMeta(tmpSpace,
-                                        filename + "." + Const.STRING_JOB_DEFAULT_EXT, rep, metaStore, null);
+                                logBasic("Try again by loading job [" + realFileName + "] with " + ext + " extension");
+                                jobMeta = new JobMeta(tmpSpace, realFileName + ext, rep, metaStore, null);
                             } catch (KettleException ke2) {
-                                ke2.printStackTrace();
-                                throw new KettleException(
-                                        "Could not execute job specified in a repository since we're not connected to one");
+                                throw new KettleException("Failed to load job [" + realFileName + "]", ke2);
                             }
                         }
                     }
@@ -1281,6 +1284,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                     if (rep != null) {
                         // Load the last version...
                         //
+                        realFileName = String.valueOf(jobObjectId);
+
                         jobMeta = rep.loadJob(jobObjectId, null);
                         break;
                     } else {
@@ -1295,6 +1300,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
             if (jobMeta != null) {
                 jobMeta.setRepository(rep);
                 jobMeta.setMetaStore(metaStore);
+            } else {
+                logBasic("Defer job loading for [" + realFileName + "]");
             }
 
             return jobMeta;

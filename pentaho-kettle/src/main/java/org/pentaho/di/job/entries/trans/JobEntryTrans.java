@@ -1243,37 +1243,40 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
     public TransMeta getTransMeta(Repository rep, IMetaStore metaStore, VariableSpace space) throws KettleException {
         try {
             TransMeta transMeta = null;
+            String realFileName = null;
             CurrentDirectoryResolver r = new CurrentDirectoryResolver();
             VariableSpace tmpSpace = r.resolveCurrentDirectory(
                     specificationMethod, space, rep, parentJob, getFilename());
             switch (specificationMethod) {
                 case FILENAME:
-                    String realFilename = tmpSpace.environmentSubstitute(getFilename());
+                    realFileName = ResourceDefinitionHelper.normalizeFileName(
+                            tmpSpace.environmentSubstitute(getFilename()), r);
                     if (rep != null) {
-                        realFilename = ResourceDefinitionHelper.normalizeFileName(realFilename, r);
-
-                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFilename);
-                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFilename, false);
+                        String dirStr = ResourceDefinitionHelper.extractDirectory(realFileName);
+                        String tmpFilename = ResourceDefinitionHelper.extractFileName(realFileName, false);
 
                         // need to try to load from the repository
                         try {
                             RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
-                            // transMeta = rep.loadTransformation(tmpFilename, dir, null, true, null);
-                            transMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
+                            if (dir != null) {
+                                logBasic("Loading transformation [" + realFileName + "] from repository...");
+                                transMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
+                            }
                         } catch (KettleException ke) {
+                            logBasic("Unable to load transformation [" + realFileName + "] from repository", ke);
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (transMeta == null && ResourceDefinitionHelper.fileExists(realFilename)) {
-                        logBasic("Loading transformation from [" + realFilename + "]");
-                        transMeta = new TransMeta(realFilename, metaStore, rep, true, tmpSpace, null);
+                    if (transMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
+                        logBasic("Loading transformation from [" + realFileName + "]");
+                        transMeta = new TransMeta(realFileName, metaStore, rep, true, tmpSpace, null);
                     }
                     break;
                 case REPOSITORY_BY_NAME:
                     String realDirectory = ResourceDefinitionHelper.normalizeFileName(
                             tmpSpace.environmentSubstitute(getDirectory()), r);
                     String realTransName = tmpSpace.environmentSubstitute(getTransname());
-                    String filename = realDirectory + '/' + realTransName;
+                    realFileName = realDirectory + '/' + realTransName;
 
                     logBasic(BaseMessages.getString(PKG, "JobTrans.Log.LoadingTransRepDirec", realTransName, realDirectory));
 
@@ -1286,21 +1289,22 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         //
                         RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
                         if (repositoryDirectory != null) {
-                            logBasic("Loading transformation from [" + filename + "]");
+                            logBasic("Loading transformation [" + realFileName + "] from repository...");
                             transMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);
                         }
                     }
 
-                    if (transMeta == null) {
+                    if (transMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
                         // rep is null, let's try loading by filename
                         try {
-                            logBasic("Loading transformation from [" + filename + "]");
-                            transMeta = new TransMeta(filename, metaStore, null, true, this, null);
+                            logBasic("Loading transformation [" + realFileName + "]...");
+                            transMeta = new TransMeta(realFileName, metaStore, null, true, this, null);
                         } catch (KettleException ke) {
+                            String ext = "." + Const.STRING_TRANS_DEFAULT_EXT;
                             try {
                                 // add .ktr extension and try again
-                                logBasic("Try again by loading transformation [" + filename + "] with .ktr extension");
-                                transMeta = new TransMeta(filename + "." + Const.STRING_TRANS_DEFAULT_EXT,
+                                logBasic("Try again by loading transformation [" + realFileName + "] with " + ext + " extension");
+                                transMeta = new TransMeta(realFileName + ext,
                                         metaStore, null, true, this, null);
                             } catch (KettleException ke2) {
                                 throw new KettleException(BaseMessages.getString(PKG, "JobTrans.Exception.NoRepDefined"), ke2);
@@ -1313,6 +1317,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         throw new KettleException(BaseMessages.getString(PKG,
                                 "JobTrans.Exception.ReferencedTransformationIdIsNull"));
                     }
+
+                    realFileName = String.valueOf(transObjectId);
 
                     if (rep != null) {
                         // Load the last revision
@@ -1337,6 +1343,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                 //
                 transMeta.setRepository(rep);
                 transMeta.setMetaStore(metaStore);
+            } else {
+                logBasic("Defer transformation loading for [" + realFileName + "]");
             }
 
             return transMeta;
