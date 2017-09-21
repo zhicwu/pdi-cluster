@@ -648,7 +648,7 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                             // fall back to try loading from file system (mappingJobMeta is going to be null)
                         }
                     }
-                    if (mappingJobMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
+                    if (mappingJobMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
                         LogChannel.GENERAL.logDetailed("Loading job [" + realFileName + "]...");
                         mappingJobMeta = new JobMeta(tmpSpace, realFileName, rep, metaStore, null);
                     }

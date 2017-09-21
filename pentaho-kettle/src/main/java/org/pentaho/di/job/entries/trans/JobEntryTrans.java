@@ -1267,8 +1267,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (transMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
-                        logBasic("Loading transformation from [" + realFileName + "]");
+                    if (transMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
+                        logBasic("Loading transformation [" + realFileName + "]...");
                         transMeta = new TransMeta(realFileName, metaStore, rep, true, tmpSpace, null);
                     }
                     break;

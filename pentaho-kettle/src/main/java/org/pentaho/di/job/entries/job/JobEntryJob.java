@@ -1243,8 +1243,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                         }
                     }
 
-                    if (jobMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
-                        logBasic("Loading job from [" + realFileName + "]...");
+                    if (jobMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
+                        logBasic("Loading job [" + realFileName + "]...");
                         jobMeta = new JobMeta(tmpSpace, realFileName, rep, metaStore, null);
                     }
                     break;

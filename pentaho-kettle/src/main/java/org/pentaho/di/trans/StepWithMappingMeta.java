@@ -92,8 +92,8 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                             // fall back to try loading from file system (transMeta is going to be null)
                         }
                     }
-                    if (mappingTransMeta == null && ResourceDefinitionHelper.fileExists(realFileName)) {
-                        LogChannel.GENERAL.logDetailed("Loading transformation from [" + realFileName + "]...");
+                    if (mappingTransMeta == null && !ResourceDefinitionHelper.containsVariable(realFileName)) {
+                        LogChannel.GENERAL.logDetailed("Loading transformation [" + realFileName + "]...");
                         mappingTransMeta = new TransMeta(realFileName, metaStore, rep, true, tmpSpace, null);
                     }
                 } catch (Exception e) {
