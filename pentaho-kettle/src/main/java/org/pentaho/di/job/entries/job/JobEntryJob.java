@@ -57,6 +57,7 @@ import org.pentaho.di.www.SlaveServerJobStatus;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -981,6 +982,32 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             Thread.sleep(JOB_QUERY_INTERVAL_MS);
                         } catch (InterruptedException e) {
                             // Ignore
+                        }
+                    }
+
+                    // PDI-14781
+                    // Write log from carte to file
+                    if (setLogfile && jobStatus != null) {
+                        String logFromCarte = jobStatus.getLoggingString();
+                        if (!Utils.isEmpty(logFromCarte)) {
+                            FileObject logfile = logChannelFileWriter.getLogFile();
+                            OutputStream logFileOutputStream = null;
+                            try {
+                                logFileOutputStream = KettleVFS.getOutputStream(logfile, setAppendLogfile);
+                                logFileOutputStream.write(logFromCarte.getBytes());
+                                logFileOutputStream.flush();
+                            } catch (Exception e) {
+                                logError("There was an error logging to file '" + logfile + "'", e);
+                            } finally {
+                                try {
+                                    if (logFileOutputStream != null) {
+                                        logFileOutputStream.close();
+                                        logFileOutputStream = null;
+                                    }
+                                } catch (Exception e) {
+                                    logError("There was an error closing log file file '" + logfile + "'", e);
+                                }
+                            }
                         }
                     }
 

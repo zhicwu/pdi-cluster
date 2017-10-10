@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -27,6 +27,7 @@ import org.pentaho.di.core.CheckResultInterface;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.database.DatabaseMeta;
 import org.pentaho.di.core.exception.KettleException;
+import org.pentaho.di.core.exception.KettleRowException;
 import org.pentaho.di.core.exception.KettleStepException;
 import org.pentaho.di.core.exception.KettleXMLException;
 import org.pentaho.di.core.injection.Injection;
@@ -297,7 +298,7 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
             boolean found = false;
             for (int i = 0; i < info.length && !found; i++) {
                 if (info[i] != null) {
-                    r.mergeRowMeta(info[i]);
+                    r.mergeRowMeta(info[i], name);
                     found = true;
                 }
             }
@@ -337,6 +338,36 @@ public class MergeRowsMeta extends BaseStepMeta implements StepMetaInterface {
                     new CheckResult(CheckResultInterface.TYPE_RESULT_OK, BaseMessages.getString(
                             PKG, "MergeRowsMeta.CheckResult.OneSourceStepMissing"), stepMeta);
             remarks.add(cr);
+        }
+
+        RowMetaInterface referenceRowMeta = null;
+        RowMetaInterface compareRowMeta = null;
+        try {
+            referenceRowMeta = transMeta.getPrevStepFields(referenceStream.getStepname());
+            compareRowMeta = transMeta.getPrevStepFields(compareStream.getStepname());
+        } catch (KettleStepException kse) {
+            new CheckResult(CheckResultInterface.TYPE_RESULT_ERROR, BaseMessages.getString(
+                    PKG, "MergeRowsMeta.CheckResult.ErrorGettingPrevStepFields"), stepMeta);
+        }
+        if (referenceRowMeta != null && compareRowMeta != null) {
+            boolean rowsMatch = false;
+            try {
+                MergeRows.checkInputLayoutValid(referenceRowMeta, compareRowMeta);
+                rowsMatch = true;
+            } catch (KettleRowException kre) {
+                rowsMatch = false;
+            }
+            if (rowsMatch) {
+                cr =
+                        new CheckResult(CheckResultInterface.TYPE_RESULT_OK, BaseMessages.getString(
+                                PKG, "MergeRowsMeta.CheckResult.RowDefinitionMatch"), stepMeta);
+                remarks.add(cr);
+            } else {
+                cr =
+                        new CheckResult(CheckResultInterface.TYPE_RESULT_ERROR, BaseMessages.getString(
+                                PKG, "MergeRowsMeta.CheckResult.RowDefinitionNotMatch"), stepMeta);
+                remarks.add(cr);
+            }
         }
     }
 

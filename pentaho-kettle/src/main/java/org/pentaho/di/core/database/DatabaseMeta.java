@@ -1121,7 +1121,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
                     urlBuilder.append(optionSeparator);
                 }
 
-                urlBuilder.append(parameter).append(valueSeparator).append(value);
+                urlBuilder.append(environmentSubstitute(parameter)).append(valueSeparator).append(environmentSubstitute(value));
                 first = false;
             }
         }

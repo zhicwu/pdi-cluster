@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2015 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -34,6 +34,7 @@ public class LoggingRegistry {
     private static final int DEFAULT_MAX_SIZE = 10000;
 
     private final Map<String, LoggingObjectInterface> map;
+    private Map<String, LogChannelFileWriterBuffer> fileWriterBuffers;
     private final Map<String, List<String>> childrenMap;
     private final int maxSize;
     private final Object syncObject = new Object();
@@ -42,6 +43,7 @@ public class LoggingRegistry {
 
     private LoggingRegistry() {
         this.map = new ConcurrentHashMap<String, LoggingObjectInterface>();
+        this.fileWriterBuffers = new ConcurrentHashMap<>();
         this.childrenMap = new ConcurrentHashMap<String, List<String>>();
 
         this.lastModificationTime = new Date();
@@ -131,9 +133,12 @@ public class LoggingRegistry {
                     }
                 });
                 int cutCount = this.maxSize < 1000 ? this.maxSize : 1000;
+                List<String> channelsNotToRemove = getLogChannelFileWriterBufferIds();
                 for (int i = 0; i < cutCount; i++) {
                     LoggingObjectInterface toRemove = all.get(i);
-                    this.map.remove(toRemove.getLogChannelId());
+                    if (!channelsNotToRemove.contains(toRemove.getLogChannelId())) {
+                        this.map.remove(toRemove.getLogChannelId());
+                    }
                 }
                 removeOrphans();
             }
@@ -251,5 +256,40 @@ public class LoggingRegistry {
     public void removeOrphans() {
         // Remove all orphaned children
         this.childrenMap.keySet().retainAll(this.map.keySet());
+    }
+
+    public void registerLogChannelFileWriterBuffer(LogChannelFileWriterBuffer fileWriterBuffer) {
+        this.fileWriterBuffers.put(fileWriterBuffer.getLogChannelId(), fileWriterBuffer);
+    }
+
+    public LogChannelFileWriterBuffer getLogChannelFileWriterBuffer(String id) {
+        for (String bufferId : this.fileWriterBuffers.keySet()) {
+            if (getLogChannelChildren(bufferId).contains(id)) {
+                return this.fileWriterBuffers.get(bufferId);
+            }
+        }
+        return null;
+    }
+
+    protected List<String> getLogChannelFileWriterBufferIds() {
+        Set<String> bufferIds = this.fileWriterBuffers.keySet();
+
+        List<String> ids = new ArrayList<>();
+        for (String id : bufferIds) {
+            ids.addAll(getLogChannelChildren(id));
+        }
+
+        ids.addAll(bufferIds);
+        return ids;
+    }
+
+    public void removeLogChannelFileWriterBuffer(String id) {
+        Set<String> bufferIds = this.fileWriterBuffers.keySet();
+
+        for (String bufferId : bufferIds) {
+            if (getLogChannelChildren(id).contains(bufferId)) {
+                this.fileWriterBuffers.remove(bufferId);
+            }
+        }
     }
 }

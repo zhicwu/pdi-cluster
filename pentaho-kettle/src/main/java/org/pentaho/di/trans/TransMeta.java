@@ -2778,6 +2778,9 @@ public class TransMeta extends AbstractMeta
                 // Set the filename here so it can be used in variables for ALL aspects of the transformation FIX: PDI-8890
                 if (null == rep) {
                     setFilename(fname);
+                } else {
+                    // Set the repository here so it can be used in variables for ALL aspects of the job FIX: PDI-16441
+                    setRepository(rep);
                 }
 
                 // Read all the database connections from the repository to make sure that we don't overwrite any there by
@@ -3112,6 +3115,10 @@ public class TransMeta extends AbstractMeta
                 for (int i = 0; i < nrSlaveServers; i++) {
                     Node slaveServerNode = XMLHandler.getSubNodeByNr(slaveServersNode, SlaveServer.XML_TAG, i);
                     SlaveServer slaveServer = new SlaveServer(slaveServerNode);
+                    if (slaveServer.getName() == null) {
+                        log.logError(BaseMessages.getString(PKG, "TransMeta.Log.WarningWhileCreationSlaveServer", slaveServer.getName()));
+                        continue;
+                    }
                     slaveServer.shareVariablesWith(this);
 
                     // Check if the object exists and if it's a shared object.
