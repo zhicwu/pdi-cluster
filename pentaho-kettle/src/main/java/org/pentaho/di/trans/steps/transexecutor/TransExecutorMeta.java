@@ -31,6 +31,7 @@ import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettlePluginException;
 import org.pentaho.di.core.exception.KettleStepException;
 import org.pentaho.di.core.exception.KettleXMLException;
+import org.pentaho.di.core.logging.LogChannel;
 import org.pentaho.di.core.row.RowMetaInterface;
 import org.pentaho.di.core.row.ValueMetaInterface;
 import org.pentaho.di.core.row.value.ValueMetaFactory;
@@ -658,9 +659,11 @@ public class TransExecutorMeta extends StepWithMappingMeta implements StepMetaIn
             TransMeta executorTransMeta = null;
 
             // do NOT export external or undetermined transformations
-            if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+            if (ResourceDefinitionHelper.isExternalOrUndeterminedResource(
                     getSpecificationMethod(), space, repository, getParentStepMeta(),
                     getFileName(), getDirectoryPath(), getTransName())) {
+                LogChannel.GENERAL.logBasic("Not going to export [" + getFileName() + "].");
+            } else {
                 executorTransMeta = loadTransMeta(this, repository, space);
             }
 

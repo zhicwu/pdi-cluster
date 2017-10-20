@@ -800,9 +800,11 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             JobMeta executorJobMeta = null;
 
             // do NOT export external or undetermined jobs
-            if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+            if (ResourceDefinitionHelper.isExternalOrUndeterminedResource(
                     getSpecificationMethod(),
                     space, repository, getParentStepMeta(), getFileName(), getDirectoryPath(), getJobName())) {
+                LogChannel.GENERAL.logBasic("Not going to export [" + getFileName() + "].");
+            } else {
                 executorJobMeta = loadJobMeta(this, repository, space);
             }
 

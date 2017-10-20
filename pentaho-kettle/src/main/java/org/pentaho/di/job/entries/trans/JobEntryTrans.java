@@ -1464,8 +1464,10 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         TransMeta transMeta = null;
 
         // do NOT export external or undetermined transformations
-        if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+        if (ResourceDefinitionHelper.isExternalOrUndeterminedResource(
                 specificationMethod, space, rep, parentJob, getFilename(), getDirectory(), getTransname())) {
+            logBasic("Not going to export [" + getFilename() + "].");
+        } else {
             transMeta = getTransMeta(repository, space);
         }
 

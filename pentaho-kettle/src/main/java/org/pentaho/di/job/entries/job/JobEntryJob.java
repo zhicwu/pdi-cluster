@@ -1394,8 +1394,10 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
         JobMeta jobMeta = null;
 
         // do NOT export external or undetermined jobs
-        if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+        if (ResourceDefinitionHelper.isExternalOrUndeterminedResource(
                 specificationMethod, space, rep, parentJob, getFilename(), getDirectory(), getJobName())) {
+            logBasic("Not going to export [" + getFilename() + "].");
+        } else {
             jobMeta = getJobMeta(repository, metaStore, space);
         }
 

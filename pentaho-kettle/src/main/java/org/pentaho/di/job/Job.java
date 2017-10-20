@@ -1811,7 +1811,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
             // Start the job
             //
-            slaveServer.getLogChannel().logBasic(new StringBuilder()
+            LogChannel.GENERAL.logBasic(new StringBuilder()
                     .append("Starting remote job[name='").append(jobName)
                     .append("', id='").append(carteObjectId).append("'...").toString());
 

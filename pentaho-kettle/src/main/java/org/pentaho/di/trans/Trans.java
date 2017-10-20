@@ -4297,7 +4297,7 @@ public class Trans implements VariableSpace, NamedParams, HasLogChannelInterface
 
             // Prepare the transformation
             //
-            slaveServer.getLogChannel().logBasic(new StringBuilder()
+            LogChannel.GENERAL.logBasic(new StringBuilder()
                     .append("Prepare remote transformation[name='").append(transName)
                     .append("', id='").append(carteObjectId).append("'...").toString());
 

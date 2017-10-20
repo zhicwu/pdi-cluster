@@ -663,7 +663,7 @@ public final class ResourceDefinitionHelper {
 
         try {
             String realFileName = null;
-            
+
             VariableSpace tmpSpace = null;
             if (parent instanceof Job) {
                 tmpSpace = r.resolveCurrentDirectory(spec, space, rep, (Job) parent, fileName);
@@ -674,13 +674,13 @@ public final class ResourceDefinitionHelper {
             switch (spec) {
                 case FILENAME:
                     realFileName = normalizeFileName(fileName, tmpSpace, r);
-                    result = isURI(realFileName) || containsVariable(realFileName);
+                    result = isURI(realFileName); // || containsVariable(realFileName);
                     break;
                 case REPOSITORY_BY_NAME:
                     String realDirectory = normalizeFileName(directory, tmpSpace, r);
-                    String realTransName = tmpSpace == null ? resourceName : tmpSpace.environmentSubstitute(resourceName);
-                    realFileName = realDirectory + '/' + realTransName;
-                    result = isURI(realDirectory) || containsVariable(realFileName);
+                    //String realTransName = tmpSpace == null ? resourceName : tmpSpace.environmentSubstitute(resourceName);
+                    //realFileName = realDirectory + '/' + realTransName;
+                    result = isURI(realDirectory); // || containsVariable(realFileName);
                     break;
                 default:
                     break;
