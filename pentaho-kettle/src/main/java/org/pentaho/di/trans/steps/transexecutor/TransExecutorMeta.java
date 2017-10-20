@@ -655,7 +655,18 @@ public class TransExecutorMeta extends StepWithMappingMeta implements StepMetaIn
             //
             // First load the executor transformation metadata...
             //
-            TransMeta executorTransMeta = loadTransMeta(this, repository, space);
+            TransMeta executorTransMeta = null;
+
+            // do NOT export external or undetermined transformations
+            if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+                    getSpecificationMethod(), space, repository, getParentStepMeta(),
+                    getFileName(), getDirectoryPath(), getTransName())) {
+                executorTransMeta = loadTransMeta(this, repository, space);
+            }
+
+            if (executorTransMeta == null) {
+                return null;
+            }
 
             boolean isMultiple = false;
             if (executorTransMeta instanceof ResourceDefinitionHelper.TransMetaCollection) {

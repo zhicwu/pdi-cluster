@@ -797,7 +797,18 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
             //
             // First load the executor job metadata...
             //
-            JobMeta executorJobMeta = loadJobMeta(this, repository, space);
+            JobMeta executorJobMeta = null;
+
+            // do NOT export external or undetermined jobs
+            if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+                    getSpecificationMethod(),
+                    space, repository, getParentStepMeta(), getFileName(), getDirectoryPath(), getJobName())) {
+                executorJobMeta = loadJobMeta(this, repository, space);
+            }
+
+            if (executorJobMeta == null) {
+                return null;
+            }
 
             boolean isMultiple = false;
             if (executorJobMeta instanceof ResourceDefinitionHelper.JobMetaCollection) {

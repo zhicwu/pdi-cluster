@@ -1461,7 +1461,13 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
         // First load the transformation metadata...
         //
         copyVariablesFrom(space);
-        TransMeta transMeta = getTransMeta(repository, space);
+        TransMeta transMeta = null;
+
+        // do NOT export external or undetermined transformations
+        if (!ResourceDefinitionHelper.isExternalOrUndeterminedResource(
+                specificationMethod, space, rep, parentJob, getFilename(), getDirectory(), getTransname())) {
+            transMeta = getTransMeta(repository, space);
+        }
 
         if (transMeta == null) {
             return null;

@@ -21,6 +21,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
 import org.pentaho.di.base.AbstractMeta;
 import org.pentaho.di.core.Const;
+import org.pentaho.di.core.ObjectLocationSpecificationMethod;
 import org.pentaho.di.core.exception.KettleException;
 import org.pentaho.di.core.exception.KettleFileException;
 import org.pentaho.di.core.logging.LogChannelInterface;
@@ -30,9 +31,11 @@ import org.pentaho.di.core.util.Utils;
 import org.pentaho.di.core.variables.VariableSpace;
 import org.pentaho.di.core.vfs.KettleVFS;
 import org.pentaho.di.i18n.BaseMessages;
+import org.pentaho.di.job.Job;
 import org.pentaho.di.job.JobMeta;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.trans.TransMeta;
+import org.pentaho.di.trans.step.StepMeta;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -493,6 +496,10 @@ public final class ResourceDefinitionHelper {
         return normalizeFileName(fileName);
     }
 
+    public static String normalizeFileName(String fileName, VariableSpace space, CurrentDirectoryResolver resolver) {
+        return normalizeFileName(space == null ? fileName : space.environmentSubstitute(fileName), resolver);
+    }
+
     public static String normalizeFileName(String fileName, CurrentDirectoryResolver resolver) {
         if (Strings.isNullOrEmpty(fileName)) {
             return fileName;
@@ -641,6 +648,48 @@ public final class ResourceDefinitionHelper {
         }
 
         return dir;
+    }
+
+    public static boolean isExternalOrUndeterminedResource(
+            ObjectLocationSpecificationMethod spec, VariableSpace space,
+            Repository rep, Object parent, String fileName, String directory, String resourceName) {
+        if (spec == ObjectLocationSpecificationMethod.REPOSITORY_BY_REFERENCE) {
+            return true;
+        }
+
+        boolean result = false;
+
+        CurrentDirectoryResolver r = new CurrentDirectoryResolver();
+
+        try {
+            String realFileName = null;
+            
+            VariableSpace tmpSpace = null;
+            if (parent instanceof Job) {
+                tmpSpace = r.resolveCurrentDirectory(spec, space, rep, (Job) parent, fileName);
+            } else if (parent instanceof StepMeta) {
+                tmpSpace = r.resolveCurrentDirectory(spec, space, rep, (StepMeta) parent, fileName);
+            }
+
+            switch (spec) {
+                case FILENAME:
+                    realFileName = normalizeFileName(fileName, tmpSpace, r);
+                    result = isURI(realFileName) || containsVariable(realFileName);
+                    break;
+                case REPOSITORY_BY_NAME:
+                    String realDirectory = normalizeFileName(directory, tmpSpace, r);
+                    String realTransName = tmpSpace == null ? resourceName : tmpSpace.environmentSubstitute(resourceName);
+                    realFileName = realDirectory + '/' + realTransName;
+                    result = isURI(realDirectory) || containsVariable(realFileName);
+                    break;
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            // ignore
+        }
+
+        return result;
     }
 
     private ResourceDefinitionHelper() {
