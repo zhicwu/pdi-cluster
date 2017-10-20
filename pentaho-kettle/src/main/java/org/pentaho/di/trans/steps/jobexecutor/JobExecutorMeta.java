@@ -638,7 +638,8 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                         String tmpFilename = ResourceDefinitionHelper.extractFileName(realFileName, false);
                         // need to try to load from the repository
                         try {
-                            RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
+                            RepositoryDirectoryInterface dir
+                                    = ResourceDefinitionHelper.findDirectory(rep, dirStr, false);
                             if (dir != null) {
                                 LogChannel.GENERAL.logDetailed("Loading job [" + realFileName + "] from repository...");
                                 mappingJobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
@@ -664,7 +665,8 @@ public class JobExecutorMeta extends BaseStepMeta implements StepMetaInterface, 
                 realFileName = realDirectory + '/' + realJobName;
 
                 if (rep != null) {
-                    RepositoryDirectoryInterface repdir = rep.findDirectory(realDirectory);
+                    RepositoryDirectoryInterface repdir
+                            = ResourceDefinitionHelper.findDirectory(rep, realDirectory, false);
                     if (repdir != null) {
                         try {
                             LogChannel.GENERAL.logDetailed("Loading job [" + realFileName + "] from repository...");

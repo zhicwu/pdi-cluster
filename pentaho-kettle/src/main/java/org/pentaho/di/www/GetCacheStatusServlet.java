@@ -20,7 +20,6 @@ import com.google.common.base.Strings;
 import org.pentaho.di.cluster.ServerCache;
 import org.pentaho.di.cluster.SlaveServer;
 import org.pentaho.di.core.Const;
-import org.pentaho.di.resource.ResourceDefinitionHelper;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;

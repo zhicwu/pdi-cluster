@@ -35,7 +35,6 @@ import org.pentaho.di.www.WebResult;
 import javax.servlet.http.HttpServletRequest;
 import java.net.URLEncoder;
 import java.util.AbstractMap;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;

@@ -16,8 +16,6 @@
 package org.pentaho.di.resource;
 
 import com.google.common.base.Strings;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.vfs2.FileObject;
@@ -44,9 +42,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Utility class for loading job and transformation meta data.
@@ -632,6 +627,20 @@ public final class ResourceDefinitionHelper {
         }
 
         return fileName;
+    }
+
+    public static RepositoryDirectoryInterface findDirectory(Repository rep, String dirName, boolean loadAll) {
+        RepositoryDirectoryInterface dir = null;
+
+        if (rep != null) {
+            try {
+                dir = loadAll ? rep.loadRepositoryDirectoryTree().findDirectory(dirName) : rep.findDirectory(dirName);
+            } catch (Exception e) {
+                // fall back to try loading from file system (mappingJobMeta is going to be null)
+            }
+        }
+
+        return dir;
     }
 
     private ResourceDefinitionHelper() {

@@ -1257,7 +1257,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
 
                         // need to try to load from the repository
                         try {
-                            RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
+                            RepositoryDirectoryInterface dir
+                                    = ResourceDefinitionHelper.findDirectory(rep, dirStr, false);
                             if (dir != null) {
                                 logBasic("Loading transformation [" + realFileName + "] from repository...");
                                 transMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
@@ -1287,7 +1288,8 @@ public class JobEntryTrans extends JobEntryBase implements Cloneable, JobEntryIn
                         //
                         // It reads last the last revision from the repository.
                         //
-                        RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
+                        RepositoryDirectoryInterface repositoryDirectory
+                                = ResourceDefinitionHelper.findDirectory(rep, realDirectory, false);
                         if (repositoryDirectory != null) {
                             logBasic("Loading transformation [" + realFileName + "] from repository...");
                             transMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);

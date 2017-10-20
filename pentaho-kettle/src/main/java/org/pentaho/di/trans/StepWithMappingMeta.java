@@ -82,7 +82,8 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                         String tmpFilename = ResourceDefinitionHelper.extractFileName(realFileName, false);
 
                         try {
-                            RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
+                            RepositoryDirectoryInterface dir
+                                    = ResourceDefinitionHelper.findDirectory(rep, dirStr, false);
                             if (dir != null) {
                                 LogChannel.GENERAL.logDetailed("Loading transformation [" + realFileName + "] from repository...");
                                 mappingTransMeta = ResourceDefinitionHelper.loadTransformation(rep, dir, tmpFilename);
@@ -109,7 +110,8 @@ public abstract class StepWithMappingMeta extends BaseStepMeta {
                 realFileName = realDirectory + '/' + realTransName;
 
                 if (rep != null) {
-                    RepositoryDirectoryInterface repositoryDirectory = rep.findDirectory(realDirectory);
+                    RepositoryDirectoryInterface repositoryDirectory
+                            = ResourceDefinitionHelper.findDirectory(rep, realDirectory, false);
                     if (repositoryDirectory != null) {
                         LogChannel.GENERAL.logDetailed("Loading transformation [" + realFileName + "] from repository...");
                         mappingTransMeta = rep.loadTransformation(realTransName, repositoryDirectory, null, true, null);

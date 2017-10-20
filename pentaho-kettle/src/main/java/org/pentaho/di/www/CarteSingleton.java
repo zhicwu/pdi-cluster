@@ -202,8 +202,10 @@ public class CarteSingleton {
 
                                         // Let's remove this from the job map...
                                         //
-                                        String id = jobMap.getJob(entry).getLogChannelId();
-                                        LoggingRegistry.getInstance().removeLogChannelFileWriterBuffer(id);
+
+                                        // it's a very BAD idea to introduce log channel file writer buffer
+                                        //String id = jobMap.getJob(entry).getLogChannelId();
+                                        //LoggingRegistry.getInstance().removeLogChannelFileWriterBuffer(id);
                                         jobMap.removeJob(entry);
 
                                         // Remove the logging information from the log registry & central log store

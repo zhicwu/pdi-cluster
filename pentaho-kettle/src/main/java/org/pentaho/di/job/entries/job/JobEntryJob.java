@@ -57,7 +57,6 @@ import org.pentaho.di.www.SlaveServerJobStatus;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
-import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -985,6 +984,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                         }
                     }
 
+                    /* The following only makes thing worse in a PDI cluster
                     // PDI-14781
                     // Write log from carte to file
                     if (setLogfile && jobStatus != null) {
@@ -1010,6 +1010,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                             }
                         }
                     }
+                    */
 
                     if (!waitingToFinish) {
                         // Since the job was posted successfully, the result is true...
@@ -1259,7 +1260,8 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
                         String tmpFilename = ResourceDefinitionHelper.extractFileName(realFileName, false);
 
                         try {
-                            RepositoryDirectoryInterface dir = rep.findDirectory(dirStr);
+                            RepositoryDirectoryInterface dir
+                                    = ResourceDefinitionHelper.findDirectory(rep, dirStr, false);
                             if (dir != null) {
                                 logBasic("Loading job [" + realFileName + "] from repository...");
                                 jobMeta = ResourceDefinitionHelper.loadJob(rep, dir, tmpFilename);
@@ -1283,7 +1285,7 @@ public class JobEntryJob extends JobEntryBase implements Cloneable, JobEntryInte
 
                     if (rep != null) {
                         RepositoryDirectoryInterface repositoryDirectory =
-                                rep.loadRepositoryDirectoryTree().findDirectory(realDirectory);
+                                ResourceDefinitionHelper.findDirectory(rep, realDirectory, true);
                         if (repositoryDirectory != null) {
                             logBasic("Loading job [" + realFileName + "] from repository...");
                             jobMeta = rep.loadJob(realJobName, repositoryDirectory, null, null); // reads

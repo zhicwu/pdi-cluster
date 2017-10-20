@@ -22,7 +22,6 @@
 
 package org.pentaho.di.www;
 
-import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import org.pentaho.di.core.Const;
 import org.pentaho.di.core.exception.KettleException;

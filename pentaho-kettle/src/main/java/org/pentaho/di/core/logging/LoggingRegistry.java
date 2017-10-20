@@ -29,12 +29,13 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LoggingRegistry {
+    protected final static List<String> EMPTY_LIST = new ArrayList<>(0);
     // OK, why not declare the followings as final?
     private static final LoggingRegistry registry = new LoggingRegistry();
     private static final int DEFAULT_MAX_SIZE = 10000;
 
     private final Map<String, LoggingObjectInterface> map;
-    private Map<String, LogChannelFileWriterBuffer> fileWriterBuffers;
+    //private Map<String, LogChannelFileWriterBuffer> fileWriterBuffers;
     private final Map<String, List<String>> childrenMap;
     private final int maxSize;
     private final Object syncObject = new Object();
@@ -43,7 +44,7 @@ public class LoggingRegistry {
 
     private LoggingRegistry() {
         this.map = new ConcurrentHashMap<String, LoggingObjectInterface>();
-        this.fileWriterBuffers = new ConcurrentHashMap<>();
+        //this.fileWriterBuffers = new ConcurrentHashMap<>();
         this.childrenMap = new ConcurrentHashMap<String, List<String>>();
 
         this.lastModificationTime = new Date();
@@ -133,12 +134,12 @@ public class LoggingRegistry {
                     }
                 });
                 int cutCount = this.maxSize < 1000 ? this.maxSize : 1000;
-                List<String> channelsNotToRemove = getLogChannelFileWriterBufferIds();
+                //List<String> channelsNotToRemove = getLogChannelFileWriterBufferIds();
                 for (int i = 0; i < cutCount; i++) {
                     LoggingObjectInterface toRemove = all.get(i);
-                    if (!channelsNotToRemove.contains(toRemove.getLogChannelId())) {
-                        this.map.remove(toRemove.getLogChannelId());
-                    }
+                    //if (!channelsNotToRemove.contains(toRemove.getLogChannelId())) {
+                    this.map.remove(toRemove.getLogChannelId());
+                    //}
                 }
                 removeOrphans();
             }
@@ -259,19 +260,22 @@ public class LoggingRegistry {
     }
 
     public void registerLogChannelFileWriterBuffer(LogChannelFileWriterBuffer fileWriterBuffer) {
-        this.fileWriterBuffers.put(fileWriterBuffer.getLogChannelId(), fileWriterBuffer);
+        //this.fileWriterBuffers.put(fileWriterBuffer.getLogChannelId(), fileWriterBuffer);
     }
 
     public LogChannelFileWriterBuffer getLogChannelFileWriterBuffer(String id) {
+        /*
         for (String bufferId : this.fileWriterBuffers.keySet()) {
             if (getLogChannelChildren(bufferId).contains(id)) {
                 return this.fileWriterBuffers.get(bufferId);
             }
         }
+        */
         return null;
     }
 
     protected List<String> getLogChannelFileWriterBufferIds() {
+        /*
         Set<String> bufferIds = this.fileWriterBuffers.keySet();
 
         List<String> ids = new ArrayList<>();
@@ -281,9 +285,12 @@ public class LoggingRegistry {
 
         ids.addAll(bufferIds);
         return ids;
+        */
+        return EMPTY_LIST;
     }
 
     public void removeLogChannelFileWriterBuffer(String id) {
+        /*
         Set<String> bufferIds = this.fileWriterBuffers.keySet();
 
         for (String bufferId : bufferIds) {
@@ -291,5 +298,6 @@ public class LoggingRegistry {
                 this.fileWriterBuffers.remove(bufferId);
             }
         }
+        */
     }
 }
