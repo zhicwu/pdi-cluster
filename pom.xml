@@ -17,7 +17,7 @@
     </modules>
 
     <properties>
-        <pentaho-ce.version>7.1.0.5-67</pentaho-ce.version>
+        <pentaho-ce.version>7.1.0.5-70</pentaho-ce.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.basedir>${project.basedir}</main.basedir>
         <compiler-plugin.version>3.5.1</compiler-plugin.version>

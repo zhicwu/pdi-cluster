@@ -42,7 +42,7 @@ public class CarteSingleton {
     private static Class<?> PKG = Carte.class; // for i18n purposes, needed by Translator2!!
 
     private static SlaveServerConfig slaveServerConfig;
-    private static CarteSingleton carteSingleton;
+    private static volatile CarteSingleton carteSingleton;
     private static Carte carte;
 
     private LogChannelInterface log;
@@ -235,29 +235,31 @@ public class CarteSingleton {
     }
 
     public static CarteSingleton getInstance() {
-        try {
-            if (carteSingleton == null) {
-                if (slaveServerConfig == null) {
-                    slaveServerConfig = new SlaveServerConfig();
-                    SlaveServer slaveServer = new SlaveServer();
-                    slaveServerConfig.setSlaveServer(slaveServer);
+        if (carteSingleton == null) {
+            synchronized (CarteSingleton.class) {
+                if (carteSingleton == null) {
+                    try {
+                        if (slaveServerConfig == null) {
+                            slaveServerConfig = new SlaveServerConfig();
+                            SlaveServer slaveServer = new SlaveServer();
+                            slaveServerConfig.setSlaveServer(slaveServer);
+                        }
+
+                        carteSingleton = new CarteSingleton(slaveServerConfig);
+
+                        String carteObjectId = UUID.randomUUID().toString();
+                        SimpleLoggingObject servletLoggingObject =
+                                new SimpleLoggingObject("CarteSingleton", LoggingObjectType.CARTE, null);
+                        servletLoggingObject.setContainerObjectId(carteObjectId);
+                        servletLoggingObject.setLogLevel(LogLevel.BASIC);
+                    } catch (KettleException ke) {
+                        throw new RuntimeException(ke);
+                    }
                 }
-
-                carteSingleton = new CarteSingleton(slaveServerConfig);
-
-                String carteObjectId = UUID.randomUUID().toString();
-                SimpleLoggingObject servletLoggingObject =
-                        new SimpleLoggingObject("CarteSingleton", LoggingObjectType.CARTE, null);
-                servletLoggingObject.setContainerObjectId(carteObjectId);
-                servletLoggingObject.setLogLevel(LogLevel.BASIC);
-
-                return carteSingleton;
-            } else {
-                return carteSingleton;
             }
-        } catch (KettleException ke) {
-            throw new RuntimeException(ke);
         }
+
+        return carteSingleton;
     }
 
     public TransformationMap getTransformationMap() {
