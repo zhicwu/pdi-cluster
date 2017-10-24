@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -22,10 +22,17 @@
 
 package org.pentaho.di.cluster;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
-import org.apache.commons.httpclient.params.HttpClientParams;
-import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.config.SocketConfig;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
@@ -62,7 +69,8 @@ public class SlaveConnectionManager {
 
     private static SlaveConnectionManager slaveConnectionManager;
 
-    private MultiThreadedHttpConnectionManager manager;
+    private final PoolingHttpClientConnectionManager manager;
+    private final RequestConfig defaultRequestConfig;
 
     private SlaveConnectionManager() {
         if (needToInitializeSSLContext()) {
@@ -74,14 +82,19 @@ public class SlaveConnectionManager {
                 //log.logError( "Default SSL context hasn't been initialized", e );
             }
         }
-        manager = new MultiThreadedHttpConnectionManager();
-        HttpConnectionManagerParams connParams = manager.getParams();
-        connParams.setDefaultMaxConnectionsPerHost(KETTLE_HTTPCLIENT_MAX_CONNECTIONS_PER_HOST);
-        connParams.setMaxTotalConnections(KETTLE_HTTPCLIENT_MAX_CONNECTIONS);
 
-        connParams.setConnectionTimeout(KETTLE_HTTPCLIENT_CONNECTION_TIMEOUT * 1000);
-        connParams.setLinger(KETTLE_HTTPCLIENT_SOCKET_LINGER);
-        connParams.setStaleCheckingEnabled(KETTLE_HTTPCLIENT_STALE_CHECKING);
+        manager = new PoolingHttpClientConnectionManager();
+        manager.setDefaultMaxPerRoute(KETTLE_HTTPCLIENT_MAX_CONNECTIONS_PER_HOST);
+        manager.setMaxTotal(KETTLE_HTTPCLIENT_MAX_CONNECTIONS);
+
+        manager.setDefaultSocketConfig(
+                SocketConfig.custom()
+                        .setSoTimeout(KETTLE_HTTPCLIENT_SOCKET_TIMEOUT)
+                        .setSoLinger(KETTLE_HTTPCLIENT_SOCKET_LINGER).build());
+
+        defaultRequestConfig = RequestConfig.custom()
+                .setConnectTimeout(KETTLE_HTTPCLIENT_CONNECTION_MANAGER_TIMEOUT * 1000)
+                .build();
     }
 
     private static boolean needToInitializeSSLContext() {
@@ -96,15 +109,45 @@ public class SlaveConnectionManager {
     }
 
     public HttpClient createHttpClient() {
-        HttpClient client = new HttpClient(manager);
+        return HttpClients.custom().setConnectionManager(manager)
+                .setDefaultRequestConfig(defaultRequestConfig)
+                .build();
+    }
 
-        HttpClientParams clientParams = client.getParams();
+    public HttpClient createHttpClient(String user, String password) {
+        CredentialsProvider provider = new BasicCredentialsProvider();
+        UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(user, password);
+        provider.setCredentials(AuthScope.ANY, credentials);
 
-        clientParams.setConnectionManagerTimeout(KETTLE_HTTPCLIENT_CONNECTION_MANAGER_TIMEOUT * 1000);
-        clientParams.setSoTimeout(KETTLE_HTTPCLIENT_SOCKET_TIMEOUT * 1000);
-        client.getHostConfiguration().getParams().setDefaults(clientParams);
+        return
+                HttpClientBuilder
+                        .create()
+                        .setDefaultCredentialsProvider(provider)
+                        .setConnectionManager(manager)
+                        .setDefaultRequestConfig(defaultRequestConfig)
+                        .build();
+    }
 
-        return client;
+    public HttpClient createHttpClient(String user, String password,
+                                       String proxyHost, int proxyPort, AuthScope authScope) {
+        HttpHost httpHost = new HttpHost(proxyHost, proxyPort);
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setProxy(httpHost)
+                .setConnectTimeout(defaultRequestConfig.getConnectTimeout())
+                .build();
+
+        CredentialsProvider provider = new BasicCredentialsProvider();
+        UsernamePasswordCredentials credentials = new UsernamePasswordCredentials(user, password);
+        provider.setCredentials(authScope, credentials);
+
+        return
+                HttpClientBuilder
+                        .create()
+                        .setDefaultCredentialsProvider(provider)
+                        .setDefaultRequestConfig(requestConfig)
+                        .setConnectionManager(manager)
+                        .build();
     }
 
     public void shutdown() {

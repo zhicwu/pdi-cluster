@@ -3,7 +3,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -998,7 +998,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
 
         retval.append("    <attributes>").append(Const.CR);
 
-        List<String> list = new ArrayList<String>();
+        List<String> list = new ArrayList<>();
         Set<Object> keySet = getAttributes().keySet();
         for (Object object : keySet) {
             list.add((String) object);
@@ -1337,7 +1337,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
     }
 
     public static final DatabaseInterface[] getDatabaseInterfaces() {
-        List<DatabaseInterface> list = new ArrayList<DatabaseInterface>(getDatabaseInterfacesMap().values());
+        List<DatabaseInterface> list = new ArrayList<>(getDatabaseInterfacesMap().values());
         return list.toArray(new DatabaseInterface[list.size()]);
     }
 
@@ -1357,7 +1357,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
                 PluginRegistry registry = PluginRegistry.getInstance();
 
                 List<PluginInterface> plugins = registry.getPlugins(DatabasePluginType.class);
-                HashMap<String, DatabaseInterface> tmpAllDatabaseInterfaces = new HashMap<String, DatabaseInterface>();
+                HashMap<String, DatabaseInterface> tmpAllDatabaseInterfaces = new HashMap<>();
                 for (PluginInterface plugin : plugins) {
                     try {
                         DatabaseInterface databaseInterface = (DatabaseInterface) registry.loadClass(plugin);
@@ -1519,7 +1519,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
      * @return an array of remarks Strings
      */
     public String[] checkParameters() {
-        ArrayList<String> remarks = new ArrayList<String>();
+        ArrayList<String> remarks = new ArrayList<>();
 
         if (getDatabaseInterface() == null) {
             remarks.add(BaseMessages.getString(PKG, "DatabaseMeta.BadInterface"));
@@ -1948,7 +1948,7 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
      * @return a feature list for the chosen database type.
      */
     public List<RowMetaAndData> getFeatureSummary() {
-        List<RowMetaAndData> list = new ArrayList<RowMetaAndData>();
+        List<RowMetaAndData> list = new ArrayList<>();
         RowMetaAndData r = null;
         final String par = "Parameter";
         final String val = "Value";
@@ -2523,13 +2523,14 @@ public class DatabaseMeta extends SharedObjectBase implements Cloneable, XMLInte
      * @return The database object if one was found, null otherwise.
      */
     public static final DatabaseMeta findDatabase(List<? extends SharedObjectInterface> databases, String dbname) {
-        if (databases == null) {
+        if (databases == null || dbname == null) {
             return null;
         }
 
+        dbname = dbname.trim();
         for (int i = 0; i < databases.size(); i++) {
             DatabaseMeta ci = (DatabaseMeta) databases.get(i);
-            if (ci.getName().equalsIgnoreCase(dbname)) {
+            if (ci.getName().trim().equalsIgnoreCase(dbname)) {
                 return ci;
             }
         }

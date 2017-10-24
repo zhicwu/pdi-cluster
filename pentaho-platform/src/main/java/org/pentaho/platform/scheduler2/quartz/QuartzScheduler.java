@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2017 Pentaho Corporation..  All rights reserved.
+ * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
  */
 
 package org.pentaho.platform.scheduler2.quartz;
@@ -37,6 +37,7 @@ import org.pentaho.platform.scheduler2.messsages.Messages;
 import org.pentaho.platform.scheduler2.recur.*;
 import org.pentaho.platform.scheduler2.recur.QualifiedDayOfWeek.DayOfWeek;
 import org.pentaho.platform.scheduler2.recur.QualifiedDayOfWeek.DayOfWeekQualifier;
+import org.pentaho.platform.util.ActionUtil;
 import org.quartz.Calendar;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -57,19 +58,23 @@ import static org.pentaho.platform.scheduler2.quartz.QuartzSchedulerHelper.RESER
  */
 public class QuartzScheduler implements IScheduler {
 
-    public static final String RESERVEDMAPKEY_ACTIONCLASS = "ActionAdapterQuartzJob-ActionClass"; //$NON-NLS-1$
+    public static final String RESERVEDMAPKEY_ACTIONCLASS = ActionUtil.QUARTZ_ACTIONCLASS;
 
-    public static final String RESERVEDMAPKEY_ACTIONUSER = "ActionAdapterQuartzJob-ActionUser"; //$NON-NLS-1$
+    public static final String RESERVEDMAPKEY_ACTIONUSER = ActionUtil.QUARTZ_ACTIONUSER;
 
-    public static final String RESERVEDMAPKEY_ACTIONID = "ActionAdapterQuartzJob-ActionId"; //$NON-NLS-1$
+    public static final String RESERVEDMAPKEY_ACTIONID = ActionUtil.QUARTZ_ACTIONID;
 
-    public static final String RESERVEDMAPKEY_STREAMPROVIDER = "ActionAdapterQuartzJob-StreamProvider"; //$NON-NLS-1$
+    public static final String RESERVEDMAPKEY_STREAMPROVIDER = ActionUtil.QUARTZ_STREAMPROVIDER;
 
-    public static final String RESERVEDMAPKEY_UIPASSPARAM = "uiPassParam";
+    public static final String RESERVEDMAPKEY_STREAMPROVIDER_INPUTFILE = ActionUtil.QUARTZ_STREAMPROVIDER_INPUT_FILE;
 
-    public static final String RESERVEDMAPKEY_LINEAGE_ID = "lineage-id";
+    public static final String RESERVEDMAPKEY_UIPASSPARAM = ActionUtil.QUARTZ_UIPASSPARAM;
 
-    public static final String RESERVEDMAPKEY_RESTART_FLAG = "ActionAdapterQuartzJob-Restart";
+    public static final String RESERVEDMAPKEY_LINEAGE_ID = ActionUtil.QUARTZ_LINEAGE_ID;
+
+    public static final String RESERVEDMAPKEY_RESTART_FLAG = ActionUtil.QUARTZ_RESTART_FLAG;
+
+    public static final String RESERVEDMAPKEY_AUTO_CREATE_UNIQUE_FILENAME = ActionUtil.QUARTZ_AUTO_CREATE_UNIQUE_FILENAME;
 
     private static final Log logger = LogFactory.getLog(QuartzScheduler.class);
 

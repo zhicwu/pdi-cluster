@@ -4,7 +4,7 @@
 
     <groupId>com.github.zhicwu</groupId>
     <artifactId>pdi-cluster</artifactId>
-    <version>7.1.0.5-SNAPSHOT</version>
+    <version>8.0.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>PDI Cluster</name>
     <description>Instructions and workarounds for building a cluster using Pentaho BA server and Kettle.</description>
@@ -17,7 +17,7 @@
     </modules>
 
     <properties>
-        <pentaho-ce.version>7.1.0.5-70</pentaho-ce.version>
+        <pentaho-ce.version>8.0.0.0-1</pentaho-ce.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.basedir>${project.basedir}</main.basedir>
         <compiler-plugin.version>3.5.1</compiler-plugin.version>

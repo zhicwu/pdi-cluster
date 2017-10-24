@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -47,6 +47,7 @@ import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Node;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Contains the meta-data for the java filter step: calculates conditions using Janino
@@ -112,6 +113,11 @@ public class JavaFilterMeta extends BaseStepMeta implements StepMetaInterface {
         }
 
         return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getStepIOMeta().getTargetStreams(), condition);
     }
 
     public Object clone() {

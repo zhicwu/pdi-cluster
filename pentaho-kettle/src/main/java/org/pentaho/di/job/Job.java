@@ -3,7 +3,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2016 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -424,6 +424,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
                 shutdownHeartbeat(heartbeat);
 
                 ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.JobFinish.id, this);
+                jobMeta.disposeEmbeddedMetastoreProvider();
 
                 fireJobFinishListeners();
             } catch (KettleException e) {
@@ -655,6 +656,12 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
         JobExecutionExtension extension = new JobExecutionExtension(this, prevResult, jobEntryCopy, true);
         ExtensionPointHandler.callExtensionPoint(log, KettleExtensionPoint.JobBeforeJobEntryExecution.id, extension);
 
+        jobMeta.disposeEmbeddedMetastoreProvider();
+        if (jobMeta.getMetastoreLocatorOsgi() != null) {
+            jobMeta.setEmbeddedMetastoreProviderKey(
+                    jobMeta.getMetastoreLocatorOsgi().setEmbeddedMetastore(jobMeta.getEmbeddedMetaStore()));
+        }
+
         if (extension.result != null) {
             prevResult = extension.result;
         }
@@ -687,6 +694,7 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
                 cloneJei.setMetaStore(rep.getMetaStore());
             }
             cloneJei.setParentJob(this);
+            cloneJei.setParentJobMeta(this.getJobMeta());
             final long start = System.currentTimeMillis();
 
             cloneJei.getLogChannel().logDetailed("Starting job entry");
@@ -1785,9 +1793,10 @@ public class Job extends Thread implements VariableSpace, NamedParams, HasLogCha
 
                     // Send the zip file over to the slave server...
                     //
-                    String result =
-                            slaveServer.sendExport(topLevelResource.getArchiveName(), AddExportServlet.TYPE_JOB, topLevelResource
-                                    .getBaseResourceName());
+                    String result = slaveServer.sendExport(
+                            topLevelResource.getArchiveName(),
+                            RegisterPackageServlet.TYPE_JOB,
+                            topLevelResource.getBaseResourceName());
                     WebResult webResult = WebResult.fromXMLString(result);
                     if (!webResult.getResult().equalsIgnoreCase(WebResult.STRING_OK)) {
                         throw new KettleException("There was an error passing the exported job to the remote server: " + Const.CR

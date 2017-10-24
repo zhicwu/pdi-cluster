@@ -2,7 +2,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class LogChannelFileWriter {
     private final AtomicBoolean active;
+    private final AtomicBoolean finished;
 
     private String logChannelId;
     private FileObject logFile;
@@ -64,6 +65,7 @@ public class LogChannelFileWriter {
         this.pollingInterval = pollingInterval;
 
         active = new AtomicBoolean(false);
+        finished = new AtomicBoolean(false);
         lastBufferLineNr = KettleLogStore.getLastBufferLineNr();
 
         // it's basic move to create the directory *before* creating log file
@@ -125,6 +127,8 @@ public class LogChannelFileWriter {
                         }
                     } catch (Exception e) {
                         exception = new KettleException("There was an error closing log file file '" + logFile + "'", e);
+                    } finally {
+                        finished.set(true);
                     }
                 }
             }
@@ -147,6 +151,9 @@ public class LogChannelFileWriter {
     public void stopLogging() {
         flush();
         active.set(false);
+        while (!finished.get()) {
+            Thread.yield();
+        }
     }
 
     public KettleException getException() {

@@ -3,7 +3,7 @@
  *
  * Pentaho Data Integration
  *
- * Copyright (C) 2002-2017 by Pentaho : http://www.pentaho.com
+ * Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
  *
  *******************************************************************************
  *
@@ -61,6 +61,7 @@ import org.pentaho.di.job.entry.JobEntryCopy;
 import org.pentaho.di.job.entry.JobEntryInterface;
 import org.pentaho.di.repository.*;
 import org.pentaho.di.resource.*;
+import org.pentaho.di.trans.steps.named.cluster.NamedClusterEmbedManager;
 import org.pentaho.metastore.api.IMetaStore;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -111,6 +112,11 @@ public class JobMeta extends AbstractMeta
     protected JobEntryLogTable jobEntryLogTable;
 
     protected List<LogTableInterface> extraLogTables;
+
+    /**
+     * The log channel interface.
+     */
+    protected LogChannelInterface log;
 
     /**
      * Constant = "SPECIAL"
@@ -198,6 +204,8 @@ public class JobMeta extends AbstractMeta
         // setInternalKettleVariables(); Don't clear the internal variables for
         // ad-hoc jobs, it's ruins the previews
         // etc.
+
+        log = LogChannel.GENERAL;
     }
 
     /**
@@ -300,65 +308,7 @@ public class JobMeta extends AbstractMeta
      * @return 0 if the two jobs are equal, 1 or -1 depending on the values (see description above)
      */
     public int compare(JobMeta j1, JobMeta j2) {
-        // If we don't have a filename, the jobs comes from a repository
-        //
-        if (Utils.isEmpty(j1.getFilename())) {
-
-            if (!Utils.isEmpty(j2.getFilename())) {
-                return -1;
-            }
-
-            // First compare names...
-            if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
-                return -1;
-            }
-            if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
-                return 1;
-            }
-            int cmpName = j1.getName().compareTo(j2.getName());
-            if (cmpName != 0) {
-                return cmpName;
-            }
-
-            // Same name, compare Repository directory...
-            int cmpDirectory = j1.getRepositoryDirectory().getPath().compareTo(j2.getRepositoryDirectory().getPath());
-            if (cmpDirectory != 0) {
-                return cmpDirectory;
-            }
-
-            // Same name, same directory, compare versions
-            if (j1.getObjectRevision() != null && j2.getObjectRevision() == null) {
-                return 1;
-            }
-            if (j1.getObjectRevision() == null && j2.getObjectRevision() != null) {
-                return -1;
-            }
-            if (j1.getObjectRevision() == null && j2.getObjectRevision() == null) {
-                return 0;
-            }
-            return j1.getObjectRevision().getName().compareTo(j2.getObjectRevision().getName());
-
-        } else {
-            if (Utils.isEmpty(j2.getFilename())) {
-                return 1;
-            }
-
-            // First compare names
-            //
-            if (Utils.isEmpty(j1.getName()) && !Utils.isEmpty(j2.getName())) {
-                return -1;
-            }
-            if (!Utils.isEmpty(j1.getName()) && Utils.isEmpty(j2.getName())) {
-                return 1;
-            }
-            int cmpName = j1.getName().compareTo(j2.getName());
-            if (cmpName != 0) {
-                return cmpName;
-            }
-
-            // Same name, compare filenames...
-            return j1.getFilename().compareTo(j2.getFilename());
-        }
+        return super.compare(j1, j2);
     }
 
     /**
@@ -583,6 +533,9 @@ public class JobMeta extends AbstractMeta
      * @see org.pentaho.di.core.xml.XMLInterface#getXML()
      */
     public String getXML() {
+        //Clear the embedded named clusters.  We will be repopulating from steps that used named clusters
+        getNamedClusterEmbedManager().clear();
+
         Props props = null;
         if (Props.isInitialized()) {
             props = Props.getInstance();
@@ -1289,6 +1242,8 @@ public class JobMeta extends AbstractMeta
     public void removeJobEntry(int i) {
         JobEntryCopy deleted = jobcopies.remove(i);
         if (deleted != null) {
+            // give step a chance to cleanup
+            deleted.setParentJobMeta(null);
             if (deleted.getEntry() instanceof MissingEntry) {
                 removeMissingEntry((MissingEntry) deleted.getEntry());
             }
@@ -2357,9 +2312,17 @@ public class JobMeta extends AbstractMeta
                     variables.getVariable(Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY));
         }
 
-        variables.setVariable(Const.INTERNAL_VARIABLE_ENTRY_CURRENT_DIRECTORY, variables.getVariable(
-                repository != null ? Const.INTERNAL_VARIABLE_JOB_REPOSITORY_DIRECTORY
-                        : Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY));
+        updateCurrentDir();
+    }
+
+    private void updateCurrentDir() {
+        String prevCurrentDir = variables.getVariable(Const.INTERNAL_VARIABLE_ENTRY_CURRENT_DIRECTORY);
+        String currentDir = variables.getVariable(
+                repository != null
+                        ? Const.INTERNAL_VARIABLE_JOB_REPOSITORY_DIRECTORY
+                        : Const.INTERNAL_VARIABLE_JOB_FILENAME_DIRECTORY);
+        variables.setVariable(Const.INTERNAL_VARIABLE_ENTRY_CURRENT_DIRECTORY, currentDir);
+        fireCurrentDirectoryChanged(prevCurrentDir, currentDir);
     }
 
     /**
@@ -2642,6 +2605,15 @@ public class JobMeta extends AbstractMeta
     }
 
     /**
+     * Gets the log channel.
+     *
+     * @return the log channel
+     */
+    public LogChannelInterface getLogChannel() {
+        return log;
+    }
+
+    /**
      * Create a unique list of job entry interfaces
      *
      * @return
@@ -2805,5 +2777,13 @@ public class JobMeta extends AbstractMeta
 
     public boolean hasMissingPlugins() {
         return missingEntries != null && !missingEntries.isEmpty();
+    }
+
+    @Override
+    public NamedClusterEmbedManager getNamedClusterEmbedManager() {
+        if (namedClusterEmbedManager == null) {
+            namedClusterEmbedManager = new NamedClusterEmbedManager(this, LogChannel.GENERAL);
+        }
+        return namedClusterEmbedManager;
     }
 }
