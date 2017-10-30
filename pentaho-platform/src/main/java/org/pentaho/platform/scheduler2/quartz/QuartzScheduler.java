@@ -161,6 +161,14 @@ public class QuartzScheduler implements IScheduler {
                     parameters.put(key, entry.getValue());
                 }
             }
+        } else { // remove duplicated parameters
+            for (Iterator<Map.Entry<String, Serializable>> it = jobParams.entrySet().iterator(); it.hasNext(); ) {
+                Map.Entry<String, Serializable> entry = it.next();
+                String key = entry.getKey();
+                if (parameters.containsKey(key)) {
+                    it.remove();
+                }
+            }
         }
     }
 
