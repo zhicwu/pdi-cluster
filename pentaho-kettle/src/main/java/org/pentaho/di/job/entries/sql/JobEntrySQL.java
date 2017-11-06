@@ -247,8 +247,14 @@ public class JobEntrySQL extends JobEntryBase implements Cloneable, JobEntryInte
                     }
 
                     String realfilename = environmentSubstitute(sqlfilename);
-                    theSQL = ResourceDefinitionHelper.getTextFileContent(
-                            this.getRepository(), realfilename, this.getLogChannel());
+                    if (ResourceDefinitionHelper.isURI(realfilename)
+                            || ResourceDefinitionHelper.containsVariable(realfilename)) {
+                        logBasic("Loading SQL [" + realfilename + "]...");
+                    } else {
+                        logBasic("Loading SQL [" + realfilename + "] from repository...");
+                        theSQL = ResourceDefinitionHelper.getTextFileContent(
+                                this.getRepository(), realfilename, this.getLogChannel());
+                    }
 
                     if (Strings.isNullOrEmpty(theSQL)) {
                         try {
