@@ -12,6 +12,7 @@
     <inceptionYear>2016</inceptionYear>
 
     <modules>
+        <module>mondrian</module>
         <module>pentaho-kettle</module>
         <module>pentaho-platform</module>
     </modules>
